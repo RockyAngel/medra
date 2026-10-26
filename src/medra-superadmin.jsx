@@ -4372,6 +4372,7 @@ export default function MedraSuperAdminPortal({ sharedAuthed, onAuth, onLogout, 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+  const [recentPaletteKeys, setRecentPaletteKeys] = useState([]);
   if (!authed && showLanding) {
     return (
       <RoleLanding
@@ -4393,7 +4394,6 @@ export default function MedraSuperAdminPortal({ sharedAuthed, onAuth, onLogout, 
   const activeLabel = active === "dashboard" ? "Dashboard" : NAV_SECTIONS.flatMap((s) => s.items).find((i) => i.key === active)?.label || "Dashboard";
   const Active = SECTION_MAP[active] || (() => <GenericScreen config={GENERIC_CONFIG[active]} />);
 
-  const [recentPaletteKeys, setRecentPaletteKeys] = useState([]);
   const goTo = (key, sectionLabel) => { setActive(key); setOpenSection(sectionLabel); setSearchQuery(""); setRecentPaletteKeys((r) => [key, ...r.filter((k) => k !== key)].slice(0, 5)); };
   const allSearchable = NAV_SECTIONS.flatMap((s) => s.items.map((i) => ({ ...i, sectionLabel: s.label })));
   const allDataSearchable = [
