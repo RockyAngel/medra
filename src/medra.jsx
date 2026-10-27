@@ -42,7 +42,8 @@ const PRICING = {
   buyExtraLotteryEntryCost: 20,
   insuranceBlockCostPoints: 2000,
   insuranceCoverPerBlock: 10000,
-  auctionLossFeeRate: 0.10,   // 10% of bid, charged when an auction is lost
+  auctionLossFeeRate: 0.02,   // 2% of bid, charged when an auction is lost with a bid of 150 or more
+  auctionFullLossBelow: 150,  // a losing bid under 150 forfeits the whole bid
   duelTieRefundRate: 1,       // full stake refunded on a tie
 };
 
@@ -117,6 +118,12 @@ function auctionQualifies(amount, mode) {
   if (mode === "lowest") return amount >= 10 && amount <= 99;
   if (mode === "highest") return amount >= 100 && amount <= 999;
   return false;
+}
+// What a losing bidder pays: bids under 150 points lose everything they bid;
+// bids of 150 or more only pay the 2% entry fee.
+function auctionLossAmount(bid) {
+  const b = Number(bid) || 0;
+  return b < PRICING.auctionFullLossBelow ? b : Math.round(b * PRICING.auctionLossFeeRate);
 }
 function resolveReverseAuction(bids) {
   const qualifying = bids.filter((b) => auctionQualifies(b.amount, b.mode));
@@ -690,6 +697,33 @@ function EmptyNote({ children }) {
   return <div className="empty-note"><Inbox size={20} style={{ opacity: 0.4, marginBottom: 6 }} /><div>{children}</div></div>;
 }
 
+/* ------------------------------------------------------------
+   ORDER SIZE CLASSES -- the seller assigns one per order from its weight.
+   Small < 35 lb and Medium up to 60 lb pay the normal delivery fee.
+   Large (60-100 lb) pays double. Oversized (over 100 lb) pays triple, or the
+   customer can arrange their own pickup instead.
+   ------------------------------------------------------------ */
+const ORDER_SIZES = [
+  { key: "small", label: "Small", range: "under 35 lb", multiplier: 1, color: "#16A34A" },
+  { key: "medium", label: "Medium", range: "35-60 lb", multiplier: 1, color: "#2563EB" },
+  { key: "large", label: "Large", range: "60-100 lb", multiplier: 2, color: "#EA580C" },
+  { key: "oversized", label: "Oversized", range: "over 100 lb", multiplier: 3, color: "#DC2626" },
+];
+function orderSizeForWeight(lb) {
+  const w = Number(lb);
+  if (!(w > 0)) return null;
+  if (w < 35) return ORDER_SIZES[0];
+  if (w <= 60) return ORDER_SIZES[1];
+  if (w <= 100) return ORDER_SIZES[2];
+  return ORDER_SIZES[3];
+}
+const orderSizeByKey = (k) => ORDER_SIZES.find((s) => s.key === k) || null;
+function SizeBadge({ sizeKey, weightLb }) {
+  const sz = orderSizeByKey(sizeKey);
+  if (!sz) return <span className="status-pill" style={{ background: "#F1F5F9", color: "#64748B" }}>Size not set</span>;
+  return <span className="status-pill" style={{ background: sz.color + "1A", color: sz.color, fontWeight: 700 }}>{sz.label} order{weightLb ? ` -- ${weightLb} lb` : ""}{sz.multiplier > 1 ? ` -- delivery x${sz.multiplier}` : ""}</span>;
+}
+
 // Canonical order statuses -- one vocabulary across every app. Legacy/alias
 // labels are normalised so StatusPill always shows one of these five.
 const ORDER_STATUSES = ["Placed", "Preparing", "Out for Delivery", "Delivered", "Cancelled"];
@@ -997,12 +1031,13 @@ function HealthcareHomeScreen({ onNavigate, appointments, telehealthPlan }) {
     { key: "health-appointments", label: "My Appointments", icon: CalendarClock, desc: `${upcoming.length} upcoming` },
     { key: "health-prescriptions", label: "Prescriptions", icon: Pill, desc: "View your prescriptions" },
     { key: "health-documents", label: "Health Records", icon: FileDown, desc: "Lab results, referrals, notes" },
-    { key: "health-messages", label: "Messages", icon: MessageCircle, desc: "Message your providers" },
+    { key: "health-messages", label: "Health Messages", icon: MessageCircle, desc: "Message your doctors and pharmacists" },
   ];
   return (
     <div className="section-pad">
       <div className="panel enter" style={{ background: "linear-gradient(160deg,#ECFDF5,#fff)", border: "1px solid #A7F3D0" }}>
         <div className="panel-title">Healthcare</div>
+        <a className="ghost-btn-sm" href="tel:112" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 10, color: "#991B1B", borderColor: "#FCA5A5", background: "#FEE2E2" }}><PhoneCall size={13} /> Emergency? Call 112</a>
         <div className="muted small" style={{ marginBottom: 10 }}>General guidance and provider consultations -- this is not a substitute for professional medical evaluation or an emergency service.</div>
         {telehealthPlan && <div className="muted small" style={{ marginBottom: 8 }}><ShieldCheck size={11} style={{ verticalAlign: "middle" }} /> {TELEHEALTH_PRICING.monthly[telehealthPlan.tier].label}: {telehealthPlan.visitsTotal - telehealthPlan.visitsUsed} of {telehealthPlan.visitsTotal} visits left this month.</div>}
       </div>
@@ -1029,9 +1064,17 @@ const EMERGENCY_TEXT_KEYWORDS = [
   "unconscious", "unresponsive", "seizure", "stroke", "severe bleeding", "won't stop bleeding",
   "overdose", "poisoning", "poisoned", "suicidal", "kill myself", "want to die",
   "severe allergic reaction", "throat closing", "face drooping", "can't speak", "cant speak",
+  "heart attack", "coughing blood", "coughing up blood", "vomiting blood", "blood in vomit", "blood in stool",
+  "not breathing", "stopped breathing", "choking", "passed out", "fainted", "collapsed", "blacking out",
+  "slurred speech", "sudden weakness", "sudden numbness", "worst headache", "sudden severe headache",
+  "stiff neck and fever", "severe burn", "head injury", "broken bone", "gunshot", "stabbed",
+  "anaphylaxis", "swollen tongue", "swelling of the throat", "pregnant and bleeding", "heavy bleeding",
+  "suicide", "end my life", "hurt myself", "self harm", "self-harm", "take my own life",
+  "convulsion", "turning blue", "blue lips", "diabetic coma", "insulin overdose",
 ];
 function textHasEmergencyKeyword(text) {
-  const lower = text.toLowerCase();
+  // normalise curly apostrophes and extra whitespace so "can’t  breathe" still matches
+  const lower = text.toLowerCase().replace(/[\u2018\u2019]/g, "'").replace(/\s+/g, " ");
   return EMERGENCY_TEXT_KEYWORDS.some((k) => lower.includes(k));
 }
 
@@ -1131,7 +1174,8 @@ function EmergencyCareScreen() {
     <div className="section-pad">
       <div className="panel enter" style={{ background: "#FEE2E2", border: "1px solid #FCA5A5" }}>
         <div className="panel-title" style={{ color: "#991B1B" }}>Emergency Care</div>
-        <div className="muted small">If you are in immediate danger, call your local emergency number now. This list is a prototype simulation of nearby emergency facilities.</div>
+        <div className="muted small" style={{ marginBottom: 8 }}>If you are in immediate danger, call your local emergency number now. This list is a prototype simulation of nearby emergency facilities.</div>
+        <a className="primary-btn-sm" href="tel:112" style={{ background: "#DC2626", display: "inline-flex", alignItems: "center", gap: 6 }}><PhoneCall size={13} /> Call 112 now</a>
       </div>
       <div className="panel enter">
         <div className="panel-title" style={{ fontSize: 13 }}>Nearby Emergency Facilities</div>
@@ -1689,7 +1733,7 @@ function HealthMessagesScreen({ providers, conversations, onSend, getMessageCost
   return (
     <div className="section-pad">
       <div className="panel enter">
-        <div className="panel-title">Messages</div>
+        <div className="panel-title">Health Messages</div>
         <div className="chip-row" style={{ marginBottom: 12 }}>
           {providers.map((p) => <button key={p.id} className={`chip ${activeProviderId === p.id ? "active" : ""}`} onClick={() => setActiveProviderId(p.id)}>{p.name}</button>)}
         </div>
@@ -2749,7 +2793,7 @@ function CheckoutScreen({ cart, points, wallet, autoConfirm, onAutoConfirmed, on
     if (onSavePayMethod) onSavePayMethod(rememberPayMethod ? payMethod : null);
     const newSubscriptions = items.filter((i) => subscribedKeys.has(i.key)).map((i) => ({ productId: i.productId, productName: i.product.name, sellerName: i.sellerName, unitPrice: withMarkup(i.sellerPrice) * (1 - SUBSCRIBE_DISCOUNT), qty: i.qty, payMethod }));
     const recipient = giftMode && recipientName ? { name: recipientName, phone: recipientPhone } : null;
-    setTimeout(() => onPlace(total, Math.min(pointsApplied, maxRedeemable), instructions, schedule === "custom" ? customTime : null, productPayable, newSubscriptions, payMethod, walletCovered, transferProofPhoto, tipPoints, topUpPoints, recipient), 900);
+    setTimeout(() => onPlace(total, Math.min(pointsApplied, maxRedeemable), instructions, schedule === "custom" ? customTime : null, productPayable, newSubscriptions, payMethod, walletCovered, transferProofPhoto, tipPoints, topUpPoints, recipient, delivery), 900);
   };
 
   return (
@@ -3050,7 +3094,29 @@ function ShareTripModal({ order, onClose }) {
   );
 }
 
-function TrackingScreen({ order, driver, onRate, onCancel, onTip, onEdit, onTogglePause, onReportSubmitted, onConfirmDelivery, points, onGetHelp }) {
+function OrderSizePanel({ order, onOversizeChoice }) {
+  const d = order && order.sharedData;
+  if (!d || !d.sizeClass) return null;
+  return (
+    <div className="panel enter" style={{ borderLeft: `4px solid ${orderSizeByKey(d.sizeClass)?.color || "#7C3AED"}` }}>
+      <div className="panel-title-row"><div className="panel-title" style={{ fontSize: 13 }}>Your order size</div><SizeBadge sizeKey={d.sizeClass} weightLb={d.weightLb} /></div>
+      {d.sizeClass === "large" && <div className="muted small">Large orders (60-100 lb) pay double delivery. {naira(d.sizeSurcharge || 0)} was added to your total.</div>}
+      {d.sizeClass === "oversized" && d.oversizeChoice === "pending" && (
+        <div>
+          <div className="muted small" style={{ marginBottom: 8 }}>The seller weighed your order at {d.weightLb} lb -- over our 100 lb delivery limit. Choose how you want to receive it:</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button className="primary-btn-sm" onClick={() => onOversizeChoice && onOversizeChoice(order.id, "pay_triple")}>Deliver it -- pay triple delivery (+{naira(d.sizeSurcharge || 0)})</button>
+            <button className="ghost-btn-sm" onClick={() => onOversizeChoice && onOversizeChoice(order.id, "self_pickup")}>I'll arrange my own pickup</button>
+          </div>
+        </div>
+      )}
+      {d.oversizeChoice === "pay_triple" && <div className="muted small">Delivery at triple the fee -- {naira(d.sizeSurcharge || 0)} added to your total.</div>}
+      {d.oversizeChoice === "self_pickup" && <div className="muted small">You'll collect this order from the seller yourself -- no delivery fee is charged.</div>}
+    </div>
+  );
+}
+
+function TrackingScreen({ order, driver, onRate, onCancel, onTip, onEdit, onTogglePause, onReportSubmitted, onConfirmDelivery, points, onGetHelp, onOversizeChoice }) {
   const [chatMsgs, setChatMsgs] = useState([{ from: "driver", text: "On my way to pick up your order!" }]);
   const [chatInput, setChatInput] = useState("");
   const [tipped, setTipped] = useState(0);
@@ -3084,6 +3150,7 @@ function TrackingScreen({ order, driver, onRate, onCancel, onTip, onEdit, onTogg
     const stageIdx2 = stageKeys.indexOf(order.status);
     return (
       <div className="section-pad">
+        <OrderSizePanel order={order} onOversizeChoice={onOversizeChoice} />
         <div className="panel enter">
           <div className="panel-title-row"><div className="panel-title">Order #{order.id}</div><span className="status-pill prep">{stage.label}</span></div>
           <div className="muted small" style={{ marginBottom: 16 }}>{stage.desc}</div>
@@ -3113,6 +3180,7 @@ function TrackingScreen({ order, driver, onRate, onCancel, onTip, onEdit, onTogg
     };
     return (
       <div className="section-pad">
+        <OrderSizePanel order={order} onOversizeChoice={onOversizeChoice} />
         <div className="panel enter">
           <div className="panel-title-row"><div className="panel-title">Order #{order.id}</div><span className={`status-pill ${order.status === "delivered" ? "done" : "route"}`}>{labels[order.status]}</span></div>
           {rider && (
@@ -3153,6 +3221,7 @@ function TrackingScreen({ order, driver, onRate, onCancel, onTip, onEdit, onTogg
       {reportOpen && <ReportIssueModal order={order} onClose={() => setReportOpen(false)} onSubmit={onReportSubmitted} />}
       {shareOpen && <ShareTripModal order={order} onClose={() => setShareOpen(false)} />}
       {callToast && <div className="switch-toast"><PhoneCall size={14} /> Calling {driver?.name}...</div>}
+      <OrderSizePanel order={order} onOversizeChoice={onOversizeChoice} />
       <div className="panel enter">
         <div className="panel-title-row"><div className="panel-title">Order #{order.id}</div><StatusPill status={cancelled ? "Cancelled" : delivered ? "Delivered" : order.status === "scheduled" ? "Scheduled" : "Out for Delivery"} /></div>
         {order.recipient && <div className="instructions-note"><Users size={11} /> Delivering to {order.recipient.name}{order.recipient.phone ? ` -- ${order.recipient.phone}` : ""} (not you)</div>}
@@ -4441,7 +4510,7 @@ function RewardsScreen({ points, lifetimePoints, gamesDone, onGameComplete, cele
 
       <div className="panel enter" style={{ background: "linear-gradient(160deg,#FFF7ED,#fff)", border: "1px solid #FED7AA" }}>
         <div className="panel-title-row"><div className="panel-title"><Gift size={16} style={{ marginRight: 6, verticalAlign: "middle" }} />Reverse Auction -- Wireless Earbuds (worth 200 pts)</div><span className="status-pill route">Prize: 200 pts value</span></div>
-        <div className="muted small" style={{ marginBottom: 8 }}>You're bidding on a real 200-point item. Two separate pools compete: everyone going for "lowest unique" competes only against each other, and everyone going for "highest unique" competes only against each other -- you won't see or compete against the other pool's numbers directly, they're just both shown after the round closes. <b>Win:</b> pay only your bid, get the 200-point item. <b>Lose:</b> you pay 10% of your bid to Medra as a real entry cost -- the rest stays yours.</div>
+        <div className="muted small" style={{ marginBottom: 8 }}>You're bidding on a real 200-point item. Two separate pools compete: everyone going for "lowest unique" competes only against each other, and everyone going for "highest unique" competes only against each other -- you won't see or compete against the other pool's numbers directly, they're just both shown after the round closes. <b>Win:</b> pay only your bid, get the 200-point item. <b>Lose:</b> bid under 150 and you lose your entire bid; bid 150 or more and you only pay a 2% entry cost to Medra -- the rest stays yours.</div>
         {!auctionClosed ? (
           <>
             <div className="field" style={{ marginBottom: 8 }}>
@@ -4459,6 +4528,13 @@ function RewardsScreen({ points, lifetimePoints, gamesDone, onGameComplete, cele
                 <button onClick={() => setAuctionBid((b) => (b || 0) + 1)}><Plus size={12} /></button>
               </div>
             </div>
+            {auctionBid > 0 && (
+              <div className="muted small" style={{ marginBottom: 8, color: auctionBid < PRICING.auctionFullLossBelow ? "#B45309" : "#16A34A" }}>
+                {auctionBid < PRICING.auctionFullLossBelow
+                  ? `Heads up: a bid under ${PRICING.auctionFullLossBelow} loses the whole ${auctionBid} points if you don't win.`
+                  : `If you don't win you only pay a 2% entry cost (${auctionLossAmount(auctionBid).toLocaleString()} points).`}
+              </div>
+            )}
             <div className="muted small" style={{ marginBottom: 8 }}>You're up against 6 real randomized bidders, each picking their own strategy too.</div>
             <button className="ghost-btn-sm" disabled={!auctionBid || auctionBid < 1 || auctionBid > points} onClick={() => {
               const botNames = ["Bot A", "Bot B", "Bot C", "Bot D", "Bot E", "Bot F"];
@@ -4477,7 +4553,7 @@ function RewardsScreen({ points, lifetimePoints, gamesDone, onGameComplete, cele
               // real pool of bids, not computed/trusted from client state.
               const spend = spendPoints || ((a) => setPoints((p) => p - a));
               if (won) { spend(auctionBid, "auction-win-charge"); earnPoints?.(200); }
-              else { const fee = Math.round(auctionBid * PRICING.auctionLossFeeRate); spend(fee, "auction-loss-fee"); }
+              else { const fee = auctionLossAmount(auctionBid); spend(fee, "auction-loss-fee"); }
             }}>Submit bid and close auction</button>
           </>
         ) : (
@@ -4508,7 +4584,7 @@ function RewardsScreen({ points, lifetimePoints, gamesDone, onGameComplete, cele
               return (
                 <>
                   <div className="muted small" style={{ marginBottom: 8 }}>
-                    {auctionWon ? <><CircleCheck size={12} style={{ verticalAlign: "middle" }} /> You won with {winner.amount} pts ({winner.mode} unique) -- earbuds are yours, and you only paid your bid.</> : winner ? <>{winner.who} won with {winner.amount} pts ({winner.mode} unique). You didn't win this round -- {Math.round((auctionBids.find((b) => b.who === "You")?.amount || 0) * 0.1)} points went to Medra as your entry cost.</> : <>No unique bid this round -- everyone tied, so nobody won. {Math.round((auctionBids.find((b) => b.who === "You")?.amount || 0) * 0.1)} points went to Medra as your entry cost.</>}
+                    {auctionWon ? <><CircleCheck size={12} style={{ verticalAlign: "middle" }} /> You won with {winner.amount} pts ({winner.mode} unique) -- earbuds are yours, and you only paid your bid.</> : winner ? <>{winner.who} won with {winner.amount} pts ({winner.mode} unique). You didn't win this round -- {auctionLossAmount(auctionBids.find((b) => b.who === "You")?.amount || 0).toLocaleString()} points went to Medra{(auctionBids.find((b) => b.who === "You")?.amount || 0) < PRICING.auctionFullLossBelow ? " -- your whole bid, because it was under 150" : " as your 2% entry cost"}.</> : <>No unique bid this round -- everyone tied, so nobody won. {auctionLossAmount(auctionBids.find((b) => b.who === "You")?.amount || 0).toLocaleString()} points went to Medra{(auctionBids.find((b) => b.who === "You")?.amount || 0) < PRICING.auctionFullLossBelow ? " -- your whole bid, because it was under 150" : " as your 2% entry cost"}.</>}
                   </div>
                   <div className="muted small" style={{ fontWeight: 700, marginBottom: 4 }}>Lowest-unique pool -- lowest bid that no one else also bid wins this pool</div>
                   <div className="list-col" style={{ marginBottom: 10 }}>{lowestPool.length > 0 ? lowestPool.map(renderRow) : <div className="muted small">No one bid this strategy this round.</div>}</div>
@@ -6537,6 +6613,7 @@ const ACCOUNT_CENTER_SECTIONS = [
     { key: "health-documents", label: "Health Records", icon: FileText, desc: "Lab results, notes, and uploads" },
     { key: "health-prescriptions", label: "Prescriptions", icon: Pill, desc: "Provider-issued and self-added" },
     { key: "health-appointments", label: "Appointments", icon: CalendarClock, desc: "Upcoming and past visits" },
+    { key: "health-messages", label: "Health Messages", icon: MessageCircle, desc: "Chats with your doctors and pharmacists" },
   ]},
   { label: "Preferences", items: [
     { key: "notifications", label: "Notifications", icon: Bell, desc: "Categories and mute preferences" },
@@ -8026,7 +8103,7 @@ export default function MedraApp({ sharedAuthed, onAuth, onLogout, sharedOrderSt
         setWallet((w) => w - lineTotal);
         pushWalletTx({ type: "Purchase", label: `Subscription -- ${sub.productName}`, amount: -lineTotal, reference: sub.id || sub.productName });
       }
-      const id2 = "AR" + Math.floor(10000 + Math.random() * 89999);
+      const id2 = "MD" + Math.floor(10000 + Math.random() * 89999);
       const placedAt = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
       const driver = DRIVER_POOL[Math.floor(Math.random() * DRIVER_POOL.length)];
       setOrders((o) => [...o, { id: id2, items: [{ key: sub.productId, productId: sub.productId, sellerName: sub.sellerName, sellerPrice: sub.unitPrice, qty: sub.qty }], total: lineTotal, status: "placed", progress: 0, driver, rating: 0, instructions: "", stageTimestamps: { placed: placedAt }, scheduledFor: null, paused: false }]);
@@ -8169,7 +8246,7 @@ export default function MedraApp({ sharedAuthed, onAuth, onLogout, sharedOrderSt
         if (!o.sharedOrder) return o;
         const shared = sharedOrderStore.orders.find((s) => s.id === o.id);
         if (!shared) return o;
-        return { ...o, status: shared.stage, sharedData: shared };
+        return { ...o, status: shared.stage, total: shared.total ?? o.total, sharedData: shared };
       });
       return [...synced, ...restored];
     });
@@ -8292,13 +8369,13 @@ export default function MedraApp({ sharedAuthed, onAuth, onLogout, sharedOrderSt
     const combinedItems = g.members.flatMap((m) => m.items.map((it) => ({ key: `${m.id}-${it.name}`, productId: null, sellerName: "Group order", sellerPrice: it.price, qty: it.qty, memberName: m.name })));
     const total = combinedItems.reduce((s, it) => s + it.sellerPrice * it.qty, 0);
     const driver = DRIVER_POOL[Math.floor(Math.random() * DRIVER_POOL.length)];
-    const id = "AR" + Math.floor(10000 + Math.random() * 89999);
+    const id = "MD" + Math.floor(10000 + Math.random() * 89999);
     const placedAt = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     setOrders((o) => [...o, { id, items: combinedItems, total, status: "placed", progress: 0, driver, rating: 0, instructions: `Group order: ${g.name}`, stageTimestamps: { placed: placedAt }, scheduledFor: null, paused: false }]);
     setGroupOrders((gs) => gs.map((x) => x.id === groupId ? { ...x, status: "placed", orderId: id } : x));
     setActiveOrderId(id);
   };
-  const placeOrder = (total, pointsUsed, instructions, scheduledFor, productPayable, newSubscriptions, payMethod, walletCovered, transferProofPhoto, tipPoints, topUpPoints, recipient) => {
+  const placeOrder = (total, pointsUsed, instructions, scheduledFor, productPayable, newSubscriptions, payMethod, walletCovered, transferProofPhoto, tipPoints, topUpPoints, recipient, deliveryFee) => {
     // Remember a used recipient (by name) so it can be picked from a quick
     // list next time, instead of retyping name/phone on every gift order.
     if (recipient?.name) {
@@ -8309,7 +8386,7 @@ export default function MedraApp({ sharedAuthed, onAuth, onLogout, sharedOrderSt
       });
     }
     const driver = DRIVER_POOL[Math.floor(Math.random() * DRIVER_POOL.length)];
-    const id = "AR" + Math.floor(10000 + Math.random() * 89999);
+    const id = "MD" + Math.floor(10000 + Math.random() * 89999);
     const placedAt = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const isScheduled = !!scheduledFor;
     const isRealTransferFlow = payMethod === "transfer" && sharedOrderStore;
@@ -8320,7 +8397,7 @@ export default function MedraApp({ sharedAuthed, onAuth, onLogout, sharedOrderSt
       // it -- no points, no wallet/points side effects, no stage progress
       // happen until that's real and confirmed.
       sharedOrderStore.addOrder({
-        id, customerName: CUSTOMER.name, items: cart, total, productPayable,
+        id, customerName: CUSTOMER.name, items: cart, total, productPayable, deliveryFee: deliveryFee || 0, baseDeliveryFee: deliveryFee || 0,
         payMethod, instructions: instructions || "", transferProofPhoto: transferProofPhoto || null,
         pointsUsed, tipPoints: tipPoints || 0, topUpPoints: topUpPoints || 0, recipient: recipient || null, newSubscriptions: newSubscriptions || [],
         stage: "verifying_payment", createdAt: Date.now(),
@@ -8426,6 +8503,21 @@ export default function MedraApp({ sharedAuthed, onAuth, onLogout, sharedOrderSt
     setReorderConfirm(true);
     setActive("checkout");
   };
+  // Oversized (over 100 lb) orders: the customer either pays triple delivery or
+  // arranges their own pickup. Once chosen, the order moves on if every seller
+  // has already confirmed it.
+  const chooseOversize = (id, choice) => {
+    if (!sharedOrderStore) return;
+    sharedOrderStore.updateOrder(id, (cur) => {
+      const allSellers = [...new Set((cur.items || []).map((it) => it.sellerName))];
+      const everyoneConfirmed = allSellers.every((n) => (cur.confirmedSellers || []).includes(n));
+      const base = cur.baseDeliveryFee ?? cur.deliveryFee ?? 0;
+      const money = choice === "pay_triple"
+        ? { total: (cur.total || 0) + (cur.sizeSurcharge || 0), deliveryFee: base * 3 }
+        : { total: Math.max(0, (cur.total || 0) - base), deliveryFee: 0 };
+      return { oversizeChoice: choice, ...money, ...(everyoneConfirmed ? { stage: "seller_preparing", sellerConfirmedAt: Date.now() } : {}) };
+    });
+  };
   const rateOrder = (n) => { setOrders((os) => os.map((o) => (o.id === activeOrderId ? { ...o, rating: n } : o))); discoverTreasureCode("rating your driver"); };
   const rateOrderById = (id, n) => { setOrders((os) => os.map((o) => (o.id === id ? { ...o, rating: n } : o))); setRatingPromptOrder(null); discoverTreasureCode("rating your driver"); };
   const togglePause = (id) => setOrders((os) => os.map((o) => (o.id === id ? { ...o, paused: !o.paused } : o)));
@@ -8508,7 +8600,7 @@ export default function MedraApp({ sharedAuthed, onAuth, onLogout, sharedOrderSt
   const SCREENS = {
     dashboard: <DashboardScreen loading={loading} wallet={wallet} points={points} lifetimePoints={lifetimePoints} onOpenProduct={openProduct} wishlist={wishlist} toggleWishlist={toggleWishlist} activeOrder={activeOrder} onTrack={() => setActive("track-order")} onSearch={(q) => { setShopQuery(q); setActive("shop"); }} onNavigate={setActive} recentlyViewed={recentlyViewed} orders={orders} fanClubs={fanClubs} cart={cart} cartUpdatedAt={cartUpdatedAt} onOpenCart={() => setCartOpen(true)} onTrackOrderId={(id) => { setActiveOrderId(id); setActive("track-order"); }} dismissedTipReminders={dismissedTipReminders} onDismissTipReminder={(id) => setDismissedTipReminders((s) => new Set(s).add(id))} />,
     "my-orders": <OrdersScreen orders={orders} onReorder={reorder} onReorderModify={(o) => setReorderModifyOrder(o)} onCancel={(id) => confirmAction({ title: "Cancel this order?", message: "The seller will be notified and the order will stop.", confirmLabel: "Cancel order" }, () => cancelOrder(id))} returnRequests={returnRequests} />,
-    "track-order": <TrackingScreen order={activeOrder} driver={activeOrder?.driver} onRate={rateOrder} onCancel={() => activeOrder && confirmAction({ title: "Cancel this order?", message: "The seller will be notified and the order will stop.", confirmLabel: "Cancel order" }, () => cancelOrder(activeOrder.id))} onTip={tipDriver} onEdit={() => activeOrder && editOrder(activeOrder)} onTogglePause={togglePause} onReportSubmitted={(report) => { setGiveawayDisqualified(true); if (activeOrder) setReturnRequests((r) => [{ id: "RT" + Math.floor(1000 + Math.random() * 8999), orderId: activeOrder.id, ...report, status: "under review", submittedAt: new Date().toLocaleDateString() }, ...r]); }} onConfirmDelivery={confirmDelivery} points={points} onGetHelp={(id) => { setSupportPrefillOrderId(id); setActive("support"); }} />,
+    "track-order": <TrackingScreen order={activeOrder} onOversizeChoice={chooseOversize} driver={activeOrder?.driver} onRate={rateOrder} onCancel={() => activeOrder && confirmAction({ title: "Cancel this order?", message: "The seller will be notified and the order will stop.", confirmLabel: "Cancel order" }, () => cancelOrder(activeOrder.id))} onTip={tipDriver} onEdit={() => activeOrder && editOrder(activeOrder)} onTogglePause={togglePause} onReportSubmitted={(report) => { setGiveawayDisqualified(true); if (activeOrder) setReturnRequests((r) => [{ id: "RT" + Math.floor(1000 + Math.random() * 8999), orderId: activeOrder.id, ...report, status: "under review", submittedAt: new Date().toLocaleDateString() }, ...r]); }} onConfirmDelivery={confirmDelivery} points={points} onGetHelp={(id) => { setSupportPrefillOrderId(id); setActive("support"); }} />,
     checkout: <CheckoutScreen cart={cart} points={points} wallet={wallet} autoConfirm={reorderConfirm} onAutoConfirmed={() => setReorderConfirm(false)} onPlace={placeOrder} onAddToCart={(p) => addToCart(getSellersForProduct(p)[0], 1)} savedPayMethod={savedPayMethod} onSavePayMethod={setSavedPayMethod} pointsRemainingThisMonth={Math.max(0, POINTS_MONTHLY_USAGE_CAP - pointsUsedThisMonth)} activeDiscount={activeDiscount} savedRecipients={savedRecipients} isOffline={isOffline} />,
     wishlist: <WishlistScreen wishlist={wishlist} onOpenProduct={openProduct} toggleWishlist={toggleWishlist} notifyPrefs={notifyPrefs} toggleNotifyPref={toggleNotifyPref} setAllNotifyPrefs={setAllNotifyPrefs} onBrowse={() => setActive("shop")} onAddAllToCart={() => { const items = PRODUCTS.filter((p) => wishlist.has(p.id)); items.forEach((p) => addToCart(getSellersForProduct(p)[0], 1)); showToast(`${items.length} item${items.length !== 1 ? "s" : ""} added to cart`); }} />,
     "gift-guide": <GiftGuideScreen onOpenProduct={openProduct} wishlist={wishlist} toggleWishlist={toggleWishlist} />,
@@ -8518,7 +8610,7 @@ export default function MedraApp({ sharedAuthed, onAuth, onLogout, sharedOrderSt
     "health-provider-search": <ProviderMarketplaceScreen onOpenProvider={(id) => { setActiveProviderId(id); setActive("health-provider-profile"); }} />,
     "health-provider-profile": <ProviderProfileScreen providerId={activeProviderId} onBack={() => setActive("health-provider-search")} onBookAppointment={(id) => { setActiveProviderId(id); setActive("health-book-appointment"); }} />,
     "health-book-appointment": <BookAppointmentScreen providerId={activeProviderId} onBack={() => setActive("health-appointments")} onConfirmed={bookHealthAppointment} telehealthPlan={telehealthPlan} onSubscribePlan={subscribeTelehealthPlan} points={points} spendPoints={spendPoints} wallet={wallet} />,
-    "health-appointments": <MyAppointmentsScreen appointments={healthAppointments} onFindProvider={() => setActive("health-provider-search")} onStartConsultation={(a) => { setActiveHealthAppointment(a); setActive("health-consultation"); }} onReschedule={rescheduleHealthAppointment} onCancel={cancelHealthAppointment} />,
+    "health-appointments": <MyAppointmentsScreen appointments={healthAppointments} onFindProvider={() => setActive("health-provider-search")} onStartConsultation={(a) => { setActiveHealthAppointment(a); setActive("health-consultation"); }} onReschedule={rescheduleHealthAppointment} onCancel={(id) => confirmAction({ title: "Cancel this appointment?", message: "Your provider will be told, and the slot will be released.", confirmLabel: "Cancel appointment" }, () => cancelHealthAppointment(id))} />,
     "health-consultation": <ConsultationRoomScreen appointment={activeHealthAppointment} onEnd={() => { if (activeHealthAppointment) completeHealthAppointment(activeHealthAppointment.id); setActive("health-appointments"); }} />,
     "health-prescriptions": <HealthPrescriptionsScreen prescriptions={healthPrescriptions} onAddPrescription={(rx) => setHealthPrescriptions((p) => [rx, ...p])} />,
     "health-documents": <HealthDocumentsScreen documents={healthDocuments} onAddDocument={(d) => setHealthDocuments((docs) => [d, ...docs])} />,

@@ -13,6 +13,8 @@ ask, can't execute · Limited = partial/redacted access · — = no access
 | Place an order | ✅ | — | — | — | — | — |
 | Confirm/prepare an order | — | Own | — | — | View | ✅ |
 | Accept/deliver an order | — | — | Own | — | View | ✅ |
+| Assign order size (weight → Small/Medium/Large/Oversized) | — | Own | View (before accepting) | — | View | ✅ |
+| Choose oversized-order option (own pickup or triple delivery) | Own order | — | — | — | — | — |
 | Manage own store (products, inventory, pricing) | — | Own | — | — | — | ✅ |
 | Review/manage seller account (oversight, not operation) | — | — | — | — | ✅ | ✅ |
 | Edit seller products on behalf of seller | — | — | — | — | Limited | ✅ |

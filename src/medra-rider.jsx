@@ -65,13 +65,48 @@ const WEATHER_DEMAND = [
   { condition: "Extreme heat", icon: "\ud83c\udf21\ufe0f", multiplier: 1.2 },
   { condition: "Harmattan haze", icon: "\ud83c\udf2b\ufe0f", multiplier: 0.85 },
 ];
-const NEW_ORDERS_POOL = [
-  { id: "MD28391", vendor: "Chicken Republic", area: "Victoria Island", distance: "2.1 km away", deliveryFee: 900, cod: false },
-  { id: "MD28392", vendor: "SuperMart Grocery", area: "Lekki Phase 1", distance: "3.4 km away", deliveryFee: 1200, cod: true, codAmount: 15450 },
-  { id: "MD28393", vendor: "Dee Pharmacy", area: "Yaba", distance: "1.7 km away", deliveryFee: 700, cod: false },
-  { id: "MD28395", vendor: "Bean There Coffee", area: "Victoria Island", distance: "2.4 km away", deliveryFee: 650, cod: false },
-  { id: "MD28396", vendor: "Fresh Fields Grocery", area: "Victoria Island", distance: "1.9 km away", deliveryFee: 800, cod: false },
+/* ------------------------------------------------------------
+   ORDER SIZE CLASSES -- the seller assigns one per order from its weight.
+   Small < 35 lb and Medium up to 60 lb pay the normal delivery fee.
+   Large (60-100 lb) pays double. Oversized (over 100 lb) pays triple, or the
+   customer can arrange their own pickup instead.
+   ------------------------------------------------------------ */
+const ORDER_SIZES = [
+  { key: "small", label: "Small", range: "under 35 lb", multiplier: 1, color: "#16A34A" },
+  { key: "medium", label: "Medium", range: "35-60 lb", multiplier: 1, color: "#2563EB" },
+  { key: "large", label: "Large", range: "60-100 lb", multiplier: 2, color: "#EA580C" },
+  { key: "oversized", label: "Oversized", range: "over 100 lb", multiplier: 3, color: "#DC2626" },
 ];
+function orderSizeForWeight(lb) {
+  const w = Number(lb);
+  if (!(w > 0)) return null;
+  if (w < 35) return ORDER_SIZES[0];
+  if (w <= 60) return ORDER_SIZES[1];
+  if (w <= 100) return ORDER_SIZES[2];
+  return ORDER_SIZES[3];
+}
+const orderSizeByKey = (k) => ORDER_SIZES.find((s) => s.key === k) || null;
+function SizeBadge({ sizeKey, weightLb }) {
+  const sz = orderSizeByKey(sizeKey);
+  if (!sz) return <span className="status-pill" style={{ background: "#F1F5F9", color: "#64748B" }}>Size not set</span>;
+  return <span className="status-pill" style={{ background: sz.color + "1A", color: sz.color, fontWeight: 700 }}>{sz.label} order{weightLb ? ` -- ${weightLb} lb` : ""}{sz.multiplier > 1 ? ` -- delivery x${sz.multiplier}` : ""}</span>;
+}
+
+const NEW_ORDERS_POOL = [
+  { id: "MD28391", vendor: "Chicken Republic", area: "Victoria Island", distance: "2.1 km away", deliveryFee: 900, weightLb: 12, cod: false },
+  { id: "MD28392", vendor: "SuperMart Grocery", area: "Lekki Phase 1", distance: "3.4 km away", deliveryFee: 1200, weightLb: 48, cod: true, codAmount: 15450 },
+  { id: "MD28393", vendor: "Dee Pharmacy", area: "Yaba", distance: "1.7 km away", deliveryFee: 700, weightLb: 9, cod: false },
+  { id: "MD28395", vendor: "Bean There Coffee", area: "Victoria Island", distance: "2.4 km away", deliveryFee: 650, weightLb: 72, cod: false },
+  { id: "MD28396", vendor: "Fresh Fields Grocery", area: "Victoria Island", distance: "1.9 km away", deliveryFee: 800, weightLb: 28, cod: false },
+];
+// Every offer carries a size class from its weight; the delivery fee shown to
+// the rider already includes the Large (x2) surcharge.
+NEW_ORDERS_POOL.forEach((o) => {
+  const sz = orderSizeForWeight(o.weightLb);
+  o.sizeKey = sz ? sz.key : null;
+  o.baseDeliveryFee = o.deliveryFee;
+  o.deliveryFee = o.deliveryFee * (sz ? sz.multiplier : 1);
+});
 
 const EARNINGS_TREND = [
   { d: "Mon", v: 2480 }, { d: "Tue", v: 3120 }, { d: "Wed", v: 2200 }, { d: "Thu", v: 3640 },
@@ -429,7 +464,7 @@ function SharedDeliveriesSection({ sharedOrderStore, setTodayEarnings, setTodayO
   if (!sharedOrderStore) {
     return <div className="section-pad"><div className="panel enter"><div className="muted small">This queue only works inside the combined preview -- open combined.html to see real orders arrive here once a seller has confirmed them.</div></div></div>;
   }
-  const available = sharedOrderStore.orders.filter((o) => o.stage === "seller_preparing");
+  const available = sharedOrderStore.orders.filter((o) => o.stage === "seller_preparing" && o.oversizeChoice !== "self_pickup");
   const [deliveryPhotos, setDeliveryPhotos] = useState({});
   const myActive = sharedOrderStore.orders.filter((o) => o.assignedRider === RIDER.name && ["rider_assigned", "picked_up", "on_the_way", "delivered_awaiting_customer_confirm"].includes(o.stage));
 
@@ -453,6 +488,7 @@ function SharedDeliveriesSection({ sharedOrderStore, setTodayEarnings, setTodayO
           <div className="confirm-modal enter" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close" onClick={() => setPreviewOrder(null)}><X size={16} /></button>
             <div className="card-name" style={{ fontSize: 15, marginBottom: 10 }}>Route preview -- Order #{previewOrder.id}</div>
+            <div style={{ marginBottom: 10 }}><SizeBadge sizeKey={previewOrder.sizeClass} weightLb={previewOrder.weightLb} /></div>
             <svg viewBox="0 0 320 140" style={{ width: "100%", height: 140, background: "#F8FAFC", borderRadius: 12 }}>
               <path d="M 30 100 Q 120 20 290 60" fill="none" stroke="#7C3AED" strokeWidth="3" strokeDasharray="6 6" />
               <circle cx="30" cy="100" r="7" fill="#EA580C" /><text x="30" y="122" fontSize="10" textAnchor="middle" fill="#334155">Pickup</text>
@@ -473,7 +509,7 @@ function SharedDeliveriesSection({ sharedOrderStore, setTodayEarnings, setTodayO
           <div className="list-col">
             {available.map((o) => (
               <div key={o.id} className="pending-row">
-                <div className="ti-mid"><div className="card-name">Order #{o.id}</div><div className="muted small">{o.customerName} -- {(o.items || []).length} item{(o.items || []).length !== 1 ? "s" : ""}{o.tipPoints > 0 ? ` -- includes a ${money(o.tipPoints)} tip` : ""}</div></div>
+                <div className="ti-mid"><div className="card-name">Order #{o.id}</div><div className="muted small">{o.customerName} -- {(o.items || []).length} item{(o.items || []).length !== 1 ? "s" : ""}{o.tipPoints > 0 ? ` -- includes a ${money(o.tipPoints)} tip` : ""}</div><div style={{ marginTop: 4 }}><SizeBadge sizeKey={o.sizeClass} weightLb={o.weightLb} /></div></div>
                 <button className="ghost-btn-sm" onClick={() => setPreviewOrder(o)}>Preview route</button>
                 <button className="accept-btn" onClick={() => accept(o)}>Accept</button>
               </div>
@@ -628,7 +664,7 @@ function DashboardScreen({ online, setOnline, newOrders, onAccept, onReject, onB
       <div className="section-pad">
         {handoffOpen && <HandoffModal onClose={() => setHandoffOpen(false)} onHandoff={(name) => { onHandoff(name); setHandoffOpen(false); }} />}
         <div className="panel enter">
-          <div className="panel-title-row"><div className="panel-title">Active delivery -- {activeTrip.id}</div><div className="rev-delta">{money(riderPayout(activeTrip.deliveryFee) + (activeTrip.batched || []).reduce((s, o) => s + riderPayout(o.deliveryFee), 0))} payout</div></div>
+          <div className="panel-title-row"><div className="panel-title">Active delivery -- {activeTrip.id} <span style={{ marginLeft: 8, fontWeight: 400 }}><SizeBadge sizeKey={activeTrip.sizeKey} weightLb={activeTrip.weightLb} /></span></div><div className="rev-delta">{money(riderPayout(activeTrip.deliveryFee) + (activeTrip.batched || []).reduce((s, o) => s + riderPayout(o.deliveryFee), 0))} payout</div></div>
           <div className="muted small" style={{ background: "#FEF3C7", color: "#92400E", padding: "6px 10px", borderRadius: 8, marginBottom: 10, fontWeight: 600 }}>Practice delivery -- not connected to a real customer order. Accept a job from Available Deliveries (Live) instead to fulfill a real one.</div>
           <div className="muted small" style={{ marginBottom: 10 }}>{peak && <span className="status-pill route">Peak hours -- until {peakEndsAt()}</span>}</div>
           {activeTrip.cod && <div className="cod-banner"><Wallet size={13} /> Collect {money(activeTrip.codAmount)} cash from the customer on delivery</div>}
@@ -778,6 +814,7 @@ function DashboardScreen({ online, setOnline, newOrders, onAccept, onReject, onB
                         <div className="card-name">Order #{o.id}</div>
                         <div className="muted">{o.vendor}, {o.area}</div>
                         <div className="muted small">{o.distance} -- ~{money(fuelCost)} fuel round trip</div>
+                        <div style={{ margin: "4px 0" }}><SizeBadge sizeKey={o.sizeKey} weightLb={o.weightLb} /></div>
                         {o.cod && <span className="cod-badge">Collect {money(o.codAmount)} cash</span>}
                       </div>
                       <div style={{ marginRight: 10, textAlign: "right" }}><div className="mono" style={{ fontWeight: 700 }}>{money(riderPayout(o.deliveryFee))}</div><div className="muted small">your payout</div></div>

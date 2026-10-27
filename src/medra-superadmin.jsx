@@ -281,7 +281,7 @@ const FEATURE_FLAGS = [
 
   // Customer -- games/community items added after the initial sweep
   { key: "care_package", app: "Customer", label: "Build a Care Package", desc: "Themed product bundles, plus free browsing to add any other item, added to cart together", status: "enabled" },
-  { key: "reverse_auction", app: "Customer", label: "Reverse Auction (points game)", desc: "Lowest-unique / highest-unique bidding for a real point-value item -- 10% of the bid is charged as an entry cost on a loss", status: "enabled" },
+  { key: "reverse_auction", app: "Customer", label: "Reverse Auction (points game)", desc: "Lowest-unique / highest-unique bidding for a real point-value item -- a losing bid under 150 points forfeits the whole bid; a losing bid of 150 or more pays a 2% entry cost", status: "enabled" },
   { key: "rewards_center", app: "Customer", label: "Rewards Center", desc: "Membership, Rewards History, Loyalty Streak, Missions & Challenges, Rewards Overview, Referrals, and all games consolidated under one \ud83c\udf81 Rewards nav group instead of scattered across three separate groups", status: "enabled" },
   { key: "notifications_center", app: "Customer", label: "Notifications Center", desc: "Categorized notifications (Orders, Payments, Rewards, Healthcare, Security) with per-category mute preferences -- replaces the old static \"Notifications: Enabled\" settings row", status: "enabled" },
   { key: "dispute_center", app: "Customer", label: "Dispute Center", desc: "Consolidated Help & Disputes flow -- Order problem (with subtype), Seller issue, Rider issue, Payment issue, or Refund request all create one ticket type that tracks Customer -> Admin -> Seller/Rider -> Resolution", status: "enabled" },
@@ -3919,7 +3919,7 @@ function RevenueSourcesSection() {
         <div className="panel-title">Emerging point-economy revenue</div>
         <div className="muted small" style={{ marginBottom: 6, color: "#B45309" }}><AlertTriangle size={11} style={{ verticalAlign: "middle" }} /> These run client-side per customer session without a backend yet, so figures here aren't aggregated platform-wide the way commissions above are.</div>
         <div className="list-col">
-          <div className="cat-top"><span className="muted small">Reverse Auction -- 10% fee on losing bids</span><span className="muted small">Real per-session, not yet aggregated</span></div>
+          <div className="cat-top"><span className="muted small">Reverse Auction -- losing bids: under 150 = whole bid, 150+ = 2% fee</span><span className="muted small">Real per-session, not yet aggregated</span></div>
           <div className="cat-top"><span className="muted small">Point-to-naira conversion spread</span><span className="muted small">1:1 currently -- no spread applied</span></div>
         </div>
       </div>

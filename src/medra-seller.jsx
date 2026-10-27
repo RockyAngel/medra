@@ -177,6 +177,33 @@ function KpiCard({ k, comparePeriod }) {
   );
 }
 
+/* ------------------------------------------------------------
+   ORDER SIZE CLASSES -- the seller assigns one per order from its weight.
+   Small < 35 lb and Medium up to 60 lb pay the normal delivery fee.
+   Large (60-100 lb) pays double. Oversized (over 100 lb) pays triple, or the
+   customer can arrange their own pickup instead.
+   ------------------------------------------------------------ */
+const ORDER_SIZES = [
+  { key: "small", label: "Small", range: "under 35 lb", multiplier: 1, color: "#16A34A" },
+  { key: "medium", label: "Medium", range: "35-60 lb", multiplier: 1, color: "#2563EB" },
+  { key: "large", label: "Large", range: "60-100 lb", multiplier: 2, color: "#EA580C" },
+  { key: "oversized", label: "Oversized", range: "over 100 lb", multiplier: 3, color: "#DC2626" },
+];
+function orderSizeForWeight(lb) {
+  const w = Number(lb);
+  if (!(w > 0)) return null;
+  if (w < 35) return ORDER_SIZES[0];
+  if (w <= 60) return ORDER_SIZES[1];
+  if (w <= 100) return ORDER_SIZES[2];
+  return ORDER_SIZES[3];
+}
+const orderSizeByKey = (k) => ORDER_SIZES.find((s) => s.key === k) || null;
+function SizeBadge({ sizeKey, weightLb }) {
+  const sz = orderSizeByKey(sizeKey);
+  if (!sz) return <span className="status-pill" style={{ background: "#F1F5F9", color: "#64748B" }}>Size not set</span>;
+  return <span className="status-pill" style={{ background: sz.color + "1A", color: sz.color, fontWeight: 700 }}>{sz.label} order{weightLb ? ` -- ${weightLb} lb` : ""}{sz.multiplier > 1 ? ` -- delivery x${sz.multiplier}` : ""}</span>;
+}
+
 // Canonical order statuses -- one vocabulary across every app. Legacy/alias
 // labels are normalised so StatusPill always shows one of these five.
 const ORDER_STATUSES = ["Placed", "Preparing", "Out for Delivery", "Delivered", "Cancelled"];
@@ -478,7 +505,22 @@ function OrdersListScreen({ orders }) {
   const [localOrders, setLocalOrders] = useState(orders);
   const toggle = (id) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const toggleAll = () => setSelected((s) => (s.size === localOrders.length ? new Set() : new Set(localOrders.map((o) => o.id))));
+  const [sizeError, setSizeError] = useState("");
+  const setWeight = (id, value) => {
+    const w = value === "" ? "" : Math.max(0, Number(value));
+    const sz = orderSizeForWeight(w);
+    setLocalOrders((os) => os.map((o) => (o.id === id ? { ...o, weightLb: w, sizeKey: sz ? sz.key : null } : o)));
+    setSizeError("");
+  };
   const bulkMark = (status) => {
+    // A rider needs to know the order size before it can be handed over, so an
+    // order can't be marked packed / out for delivery until the seller has
+    // assigned its weight.
+    if (status === "Out for Delivery") {
+      const missing = localOrders.filter((o) => selected.has(o.id) && !o.sizeKey).map((o) => `#${o.id}`);
+      if (missing.length) { setSizeError(`Assign a weight (size) to ${missing.join(", ")} before marking packed -- riders see the size before accepting.`); return; }
+    }
+    setSizeError("");
     setLocalOrders((os) => os.map((o) => (selected.has(o.id) ? { ...o, status } : o)));
     setSelected(new Set());
   };
@@ -495,9 +537,11 @@ function OrdersListScreen({ orders }) {
             </div>
           )}
         </div>
+        {sizeError && <div className="muted small" style={{ color: "#DC2626", marginBottom: 8 }}><AlertTriangle size={12} style={{ verticalAlign: "middle" }} /> {sizeError}</div>}
+        <div className="muted small" style={{ marginBottom: 8 }}>Size guide -- {ORDER_SIZES.map((z) => `${z.label}: ${z.range}${z.multiplier > 1 ? ` (delivery x${z.multiplier})` : ""}`).join(" | ")}. Over 100 lb the customer can arrange their own pickup instead.</div>
         <table className="admin-table">
-          <thead><tr><th><input type="checkbox" checked={selected.size === localOrders.length && localOrders.length > 0} onChange={toggleAll} /></th><th>Order</th><th>Customer</th><th>Time</th><th>Total</th><th>Status</th></tr></thead>
-          <tbody>{localOrders.map((o) => <tr key={o.id}><td><input type="checkbox" checked={selected.has(o.id)} onChange={() => toggle(o.id)} /></td><td className="mono">#{o.id}</td><td>{o.customer}</td><td className="muted">{o.time}</td><td className="mono">{money(o.total)}</td><td><StatusPill status={o.status} /></td></tr>)}</tbody>
+          <thead><tr><th><input type="checkbox" checked={selected.size === localOrders.length && localOrders.length > 0} onChange={toggleAll} /></th><th>Order</th><th>Customer</th><th>Time</th><th>Total</th><th>Size (assign weight)</th><th>Status</th></tr></thead>
+          <tbody>{localOrders.map((o) => <tr key={o.id}><td><input type="checkbox" checked={selected.has(o.id)} onChange={() => toggle(o.id)} /></td><td className="mono">#{o.id}</td><td>{o.customer}</td><td className="muted">{o.time}</td><td className="mono">{money(o.total)}</td><td><div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}><input type="number" min="1" placeholder="lb" aria-label={`Weight in pounds for order ${o.id}`} value={o.weightLb || ""} onChange={(e) => setWeight(o.id, e.target.value)} style={{ width: 64, padding: "4px 6px", border: "1px solid var(--border)", borderRadius: 8 }} /><SizeBadge sizeKey={o.sizeKey} weightLb={null} /></div></td><td><StatusPill status={o.status} /></td></tr>)}</tbody>
         </table>
       </div>
     </div>
@@ -921,6 +965,7 @@ function RiderDeclinesSection() {
 
 function OrderConfirmationsSection({ sharedOrderStore }) {
   const [nowTick, setNowTick] = useState(Date.now());
+  const [weights, setWeights] = useState({});
   useEffect(() => {
     const t = setInterval(() => setNowTick(Date.now()), 15000);
     return () => clearInterval(t);
@@ -933,13 +978,26 @@ function OrderConfirmationsSection({ sharedOrderStore }) {
     const allSellers = [...new Set((order.items || []).map((it) => it.sellerName))];
     const confirmedSoFar = [...new Set([...(order.confirmedSellers || []), STORE.name])];
     const everyoneConfirmed = allSellers.every((s) => confirmedSoFar.includes(s));
+    // The first seller to confirm assigns the order's size from its weight.
+    // Large pays double delivery (charged now); Oversized waits for the
+    // customer to either pay triple or arrange their own pickup.
+    const sz = order.sizeClass ? orderSizeByKey(order.sizeClass) : orderSizeForWeight(weights[order.id]);
+    if (!sz) return;
+    const baseFee = order.baseDeliveryFee ?? order.deliveryFee ?? 0;
+    const sizePatch = order.sizeClass ? {} : (
+      sz.key === "oversized"
+        ? { weightLb: Number(weights[order.id]), sizeClass: sz.key, baseDeliveryFee: baseFee, sizeSurcharge: baseFee * 2, oversizeChoice: "pending" }
+        : { weightLb: Number(weights[order.id]), sizeClass: sz.key, baseDeliveryFee: baseFee, sizeSurcharge: baseFee * (sz.multiplier - 1), deliveryFee: baseFee * sz.multiplier, total: (order.total || 0) + baseFee * (sz.multiplier - 1) }
+    );
+    const oversizeBlocked = sz.key === "oversized" && !["pay_triple", "self_pickup"].includes(order.oversizeChoice);
     sharedOrderStore.updateOrder(order.id, {
+      ...sizePatch,
       confirmedSellers: confirmedSoFar,
       // Real multi-seller handling: an order with items from more than one
       // store only moves forward once EVERY seller represented in it has
       // confirmed -- one seller confirming can't ship another seller's items
       // that were never actually prepared.
-      ...(everyoneConfirmed ? { stage: "seller_preparing", sellerConfirmedAt: Date.now() } : {}),
+      ...(everyoneConfirmed && !oversizeBlocked ? { stage: "seller_preparing", sellerConfirmedAt: Date.now() } : {}),
     });
   };
   return (
@@ -969,10 +1027,27 @@ function OrderConfirmationsSection({ sharedOrderStore }) {
                     const overdue = waitingMin >= 10;
                     return <div className="muted small" style={{ color: overdue ? "#DC2626" : "var(--muted)" }}><Clock size={11} style={{ verticalAlign: "middle" }} /> Waiting {waitingMin} min{overdue ? " -- customers expect a quick confirmation" : ""}</div>;
                   })()}
+                  {(() => {
+                    const sz = o.sizeClass ? orderSizeByKey(o.sizeClass) : orderSizeForWeight(weights[o.id]);
+                    const base = o.baseDeliveryFee ?? o.deliveryFee ?? 0;
+                    return (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
+                        {o.sizeClass ? (
+                          <div className="muted small">Size assigned: <SizeBadge sizeKey={o.sizeClass} weightLb={o.weightLb} /></div>
+                        ) : (
+                          <label className="field" style={{ marginBottom: 0 }}><span>Order weight (lb) -- assigns Small / Medium / Large / Oversized</span><input type="number" min="1" value={weights[o.id] || ""} onChange={(e) => setWeights((w) => ({ ...w, [o.id]: e.target.value }))} placeholder="e.g. 42" /></label>
+                        )}
+                        {!o.sizeClass && sz && <div className="muted small"><SizeBadge sizeKey={sz.key} weightLb={weights[o.id]} />{base > 0 && sz.multiplier > 1 ? ` -- delivery fee ${money(base)} becomes ${money(base * sz.multiplier)}${sz.key === "oversized" ? " if the customer pays, or they arrange their own pickup" : ""}` : ""}</div>}
+                        {o.oversizeChoice === "pending" && <div className="muted small" style={{ color: "#B45309" }}><Clock size={11} style={{ verticalAlign: "middle" }} /> Waiting for the customer to choose: arrange their own pickup or pay triple delivery.</div>}
+                        {o.oversizeChoice === "self_pickup" && <div className="muted small" style={{ color: "#16A34A" }}>Customer will collect this order themselves -- no rider needed.</div>}
+                        {o.oversizeChoice === "pay_triple" && <div className="muted small" style={{ color: "#16A34A" }}>Customer chose delivery at triple the fee.</div>}
+                      </div>
+                    );
+                  })()}
                   {iAlreadyConfirmed ? (
-                    <div className="muted small"><CircleCheck size={12} style={{ verticalAlign: "middle", color: "#16A34A" }} /> You've confirmed -- waiting on {othersStillPending.join(", ")} before this moves to a rider.</div>
+                    <div className="muted small"><CircleCheck size={12} style={{ verticalAlign: "middle", color: "#16A34A" }} /> You've confirmed -- {othersStillPending.length > 0 ? `waiting on ${othersStillPending.join(", ")} before this moves to a rider.` : o.oversizeChoice === "pending" ? "waiting for the customer's oversized-order choice." : "this moves to a rider next."}</div>
                   ) : (
-                    <button className="primary-btn-sm" onClick={() => confirm(o)}>Confirm and prepare</button>
+                    <button className="primary-btn-sm" disabled={!o.sizeClass && !orderSizeForWeight(weights[o.id])} onClick={() => confirm(o)}>Confirm and prepare</button>
                   )}
                 </div>
               );
@@ -980,6 +1055,24 @@ function OrderConfirmationsSection({ sharedOrderStore }) {
           </div>
         )}
       </div>
+      {(() => {
+        const pickups = sharedOrderStore.orders.filter((o) => o.stage === "seller_preparing" && o.oversizeChoice === "self_pickup" && (o.items || []).some((it) => it.sellerName === STORE.name));
+        if (pickups.length === 0) return null;
+        return (
+          <div className="panel enter">
+            <div className="panel-title">Customer pickups</div>
+            <div className="muted small" style={{ marginBottom: 10 }}>Oversized orders the customer is collecting themselves -- hand the order over, then mark it collected.</div>
+            <div className="list-col">
+              {pickups.map((o) => (
+                <div key={o.id} className="pending-row">
+                  <div className="ti-mid"><div className="card-name">Order #{o.id} -- {o.customerName}</div><div className="muted small"><SizeBadge sizeKey={o.sizeClass} weightLb={o.weightLb} /></div></div>
+                  <button className="primary-btn-sm" onClick={() => sharedOrderStore.updateOrder(o.id, { stage: "delivered", riderConfirmedDelivered: true, customerConfirmedDelivered: true, deliveredAt: Date.now(), collectedByCustomer: true })}>Mark collected</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
