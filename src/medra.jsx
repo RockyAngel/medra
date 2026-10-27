@@ -163,10 +163,10 @@ const DONATION_CAUSES = [
    listed price. Delivery commission: platform takes 15% of the
    delivery fee at normal hours, 10% during peak hours -- rider
    keeps the rest. Delivery fee is distance- and peak-hour-based
-   (see computeDeliveryFee), waived past the free-delivery threshold.
+   (see computeDeliveryFee). Delivery is never free -- every order carries a
+   delivery fee; a reward can discount it but never remove it.
    ------------------------------------------------------------ */
 const PRODUCT_COMMISSION_RATE = 0.10;
-const FREE_DELIVERY_THRESHOLD = 10000;
 const DELIVERY_COMMISSION_NORMAL = 0.15;
 const DELIVERY_COMMISSION_PEAK = 0.10;
 const PEAK_WINDOWS = [[12, 14], [18, 21]];
@@ -199,11 +199,19 @@ function computeDeliveryFee(distanceKm, peak) {
 // while checkout checked it against the post-discount amount), which could
 // make the same cart show "free delivery" in one screen and a fee in the
 // other.
-function wheelDiscountPctFromActiveDiscount(activeDiscount) {
-  return activeDiscount && activeDiscount !== "free_delivery" ? Number(activeDiscount) : 0;
+function isDeliveryReward(activeDiscount) {
+  return typeof activeDiscount === "string" && activeDiscount.startsWith("delivery_");
 }
-function isEligibleForFreeDelivery(subtotalAfterDiscount, activeDiscount) {
-  return subtotalAfterDiscount >= FREE_DELIVERY_THRESHOLD || activeDiscount === "free_delivery";
+function wheelDiscountPctFromActiveDiscount(activeDiscount) {
+  return activeDiscount && !isDeliveryReward(activeDiscount) ? Number(activeDiscount) : 0;
+}
+// Percentage knocked off the delivery fee by a delivery reward (e.g. "delivery_50"
+// = 50% off). The fee is never reduced to zero -- delivery always has a price.
+function deliveryRewardPct(activeDiscount) {
+  return isDeliveryReward(activeDiscount) ? Math.min(90, Number(activeDiscount.slice(9)) || 0) : 0;
+}
+function applyDeliveryReward(baseFee, activeDiscount) {
+  return Math.max(1, Math.round(baseFee * (1 - deliveryRewardPct(activeDiscount) / 100)));
 }
 function peakEndsAt(date = new Date()) {
   const h = date.getHours();
@@ -483,7 +491,7 @@ const WHEEL_PRIZES = [
   { label: "50 Points", short: "50 PTS", emoji: "⭐", weight: 16, color: "#2563EB", type: "points", value: 50 },
   { label: "75 Points", short: "75 PTS", emoji: "⭐", weight: 12, color: "#7C3AED", type: "points", value: 75 },
   { label: "120 Points", short: "120 PTS", emoji: "⭐", weight: 10, color: "#DB2777", type: "points", value: 120 },
-  { label: "Free Delivery", short: "FREE DELIVERY", emoji: "🚚", weight: 8, color: "#F59E0B", type: "free_delivery", value: null },
+  { label: "50% Off Delivery", short: "50% OFF DELIVERY", emoji: "🚚", weight: 8, color: "#F59E0B", type: "delivery_50", value: null },
   { label: "Mystery Gift (220 pts)", short: "MYSTERY", emoji: "🎁", weight: 6, color: "#EA580C", type: "points", value: 220 },
   { label: "Grand Prize (280 pts)", short: "GRAND", emoji: "🏆", weight: 3, color: "#DC2626", type: "points", value: 280 },
 ];
@@ -682,9 +690,15 @@ function EmptyNote({ children }) {
   return <div className="empty-note"><Inbox size={20} style={{ opacity: 0.4, marginBottom: 6 }} /><div>{children}</div></div>;
 }
 
+// Canonical order statuses -- one vocabulary across every app. Legacy/alias
+// labels are normalised so StatusPill always shows one of these five.
+const ORDER_STATUSES = ["Placed", "Preparing", "Out for Delivery", "Delivered", "Cancelled"];
+const ORDER_STATUS_ALIASES = { placed: "Placed", "order placed": "Placed", pending: "Placed", confirmed: "Placed", processing: "Preparing", preparing: "Preparing", scheduled: "Placed", onway: "Out for Delivery", "en route": "Out for Delivery", "out for delivery": "Out for Delivery", delivered: "Delivered", "delivered (simulated)": "Delivered", completed: "Delivered", cancelled: "Cancelled", canceled: "Cancelled" };
+const normalizeOrderStatus = (s) => ORDER_STATUS_ALIASES[String(s || "").toLowerCase()] || s;
 function StatusPill({ status }) {
-  const map = { Delivered: "done", "Out for Delivery": "route", Processing: "prep", Cancelled: "delay" };
-  return <span className={`status-pill ${map[status] || ""}`}>{status}</span>;
+  const label = normalizeOrderStatus(status);
+  const map = { Delivered: "done", "Out for Delivery": "route", Preparing: "prep", Placed: "prep", Cancelled: "delay" };
+  return <span className={`status-pill ${map[label] || ""}`}>{label}</span>;
 }
 
 function PointsBadge({ points }) {
@@ -1429,7 +1443,7 @@ function ConsultationRoomScreen({ appointment, onEnd }) {
             </div>
           </>
         )}
-        <button className="ghost-btn-sm" style={{ marginTop: 14 }} onClick={onEnd}>End Consultation</button>
+        <button className="ghost-btn-sm" style={{ marginTop: 14 }} onClick={() => confirmAction({ title: "End this consultation?", message: "The session will close for both you and the provider.", confirmLabel: "End consultation" }, () => onEnd())}>End Consultation</button>
       </div>
     </div>
   );
@@ -1743,7 +1757,7 @@ function ProviderPortalScreen({ providerId, appointments, onAccept, onDecline, c
                     <div className="ti-mid"><div className="card-name">Appointment #{a.id}</div><div className="muted small">{a.date?.toLocaleDateString?.() || a.date} at {a.time} -- {a.consultType}</div></div>
                     <div style={{ display: "flex", gap: 6 }}>
                       <button className="ghost-btn-sm" onClick={() => onAccept(a.id)}>Accept</button>
-                      <button className="ghost-btn-sm" onClick={() => onDecline(a.id)}>Decline</button>
+                      <button className="ghost-btn-sm" onClick={() => confirmAction({ title: "Decline this appointment?", message: "The provider will be told you declined.", confirmLabel: "Decline" }, () => onDecline(a.id))}>Decline</button>
                     </div>
                   </div>
                 ))}
@@ -2547,9 +2561,8 @@ function CartDrawer({ open, onClose, cart, updateQty, onCheckout, activeDiscount
   const customerSubtotal = (sellerSubtotal + platformFee) * (1 - wheelDiscountPct / 100);
   const tripDistanceKm = items.length ? Math.max(...items.map((i) => i.distanceKm || 1)) : 0;
   const peak = isPeakHour();
-  const freeDeliveryWon = activeDiscount === "free_delivery";
-  const baseDelivery = customerSubtotal === 0 || isEligibleForFreeDelivery(customerSubtotal, activeDiscount) ? 0 : computeDeliveryFee(tripDistanceKm, peak);
-  const delivery = baseDelivery;
+  const baseDelivery = customerSubtotal === 0 ? 0 : computeDeliveryFee(tripDistanceKm, peak);
+  const delivery = baseDelivery === 0 ? 0 : applyDeliveryReward(baseDelivery, activeDiscount);
   return (
     <div className={`cart-drawer-wrap ${open ? "open" : ""}`}>
       <div className="cart-backdrop" onClick={onClose} />
@@ -2557,15 +2570,6 @@ function CartDrawer({ open, onClose, cart, updateQty, onCheckout, activeDiscount
         <div className="panel-title-row" style={{ padding: "18px 20px 0" }}><div className="panel-title">Your Cart</div><button className="modal-close" onClick={onClose}><X size={16} /></button></div>
         <div className="list-col" style={{ padding: "0 20px", flex: 1, overflowY: "auto" }}>
           {items.length === 0 && <EmptyNote>Your cart is empty.</EmptyNote>}
-          {items.length > 0 && !isEligibleForFreeDelivery(customerSubtotal, activeDiscount) && (
-            <div className="muted small" style={{ background: "#F5F3FF", borderRadius: 10, padding: "8px 10px" }}>
-              <Truck size={12} style={{ verticalAlign: "middle" }} /> Add {naira(FREE_DELIVERY_THRESHOLD - customerSubtotal)} more for free delivery
-              <div className="bar-track" style={{ marginTop: 6 }}><div className="bar-fill-h" style={{ width: `${Math.min(100, (customerSubtotal / FREE_DELIVERY_THRESHOLD) * 100)}%`, background: "#7C3AED" }} /></div>
-            </div>
-          )}
-          {items.length > 0 && isEligibleForFreeDelivery(customerSubtotal, activeDiscount) && (
-            <div className="muted small" style={{ background: "#ECFDF5", color: "#16A34A", borderRadius: 10, padding: "8px 10px" }}><CircleCheck size={12} style={{ verticalAlign: "middle" }} /> You've unlocked free delivery on this order!</div>
-          )}
           {items.length > 0 && notifyPrefs && setAllNotifyPrefs && (() => {
             const cartAllOn = items.every((i) => notifyPrefs[i.productId]?.priceDrop);
             return (
@@ -2598,7 +2602,7 @@ function CartDrawer({ open, onClose, cart, updateQty, onCheckout, activeDiscount
                     <div className="mono">{naira(withMarkup(i.sellerPrice))}</div>
                     <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
                       <button className="link-price" onClick={() => onMoveToCart(i.key)}>Move to cart</button>
-                      <button className="link-price" style={{ color: "#DC2626" }} onClick={() => onRemoveSaved(i.key)}>Remove</button>
+                      <button className="link-price" style={{ color: "#DC2626" }} onClick={() => confirmAction({ title: "Remove this item?", message: "It will be removed from your saved-for-later list.", confirmLabel: "Remove" }, () => onRemoveSaved(i.key))}>Remove</button>
                     </div>
                   </div>
                 </div>
@@ -2609,7 +2613,7 @@ function CartDrawer({ open, onClose, cart, updateQty, onCheckout, activeDiscount
         {items.length > 0 && (
           <div style={{ padding: 20, borderTop: "1px solid var(--border)" }}>
             <div className="cat-top" style={{ marginBottom: 4 }}><span className="muted">Items ({items.reduce((s, i) => s + i.qty, 0)})</span><span className="mono">{naira(customerSubtotal)}</span></div>
-            <div className="cat-top" style={{ marginBottom: 10 }}><span className="muted">Delivery</span><span className="mono">{delivery === 0 ? "Free" : naira(delivery)}</span></div>
+            <div className="cat-top" style={{ marginBottom: 10 }}><span className="muted">Delivery</span><span className="mono">{naira(delivery)}</span></div>
             <button className="primary-btn-sm wide" onClick={onCheckout}>Checkout - {naira(customerSubtotal + delivery)}</button>
           </div>
         )}
@@ -2700,9 +2704,9 @@ function CheckoutScreen({ cart, points, wallet, autoConfirm, onAutoConfirmed, on
   const platformFee = sellerSubtotal * PRODUCT_COMMISSION_RATE;
   const wheelDiscountPct = wheelDiscountPctFromActiveDiscount(activeDiscount);
   const productPayable = (sellerSubtotal + platformFee) * (1 - wheelDiscountPct / 100);
-  const freeDeliveryWon = activeDiscount === "free_delivery";
-  const baseDelivery = isEligibleForFreeDelivery(productPayable, activeDiscount) ? 0 : computeDeliveryFee(tripDistanceKm, peak);
-  const delivery = baseDelivery;
+  const deliveryRewardWon = isDeliveryReward(activeDiscount);
+  const baseDelivery = computeDeliveryFee(tripDistanceKm, peak);
+  const delivery = applyDeliveryReward(baseDelivery, activeDiscount);
 
   const maxRedeemable = Math.min(points, Math.floor(productPayable), pointsRemainingThisMonth ?? Infinity);
 
@@ -2827,7 +2831,7 @@ function CheckoutScreen({ cart, points, wallet, autoConfirm, onAutoConfirmed, on
           ))}
           {pointsApplied > 0 && <div className="cat-top"><span className="muted">Points applied</span><span className="mono" style={{ color: "#16A34A" }}>-{naira(Math.min(pointsApplied, maxRedeemable))}</span></div>}
           {wheelDiscountPct > 0 && <div className="cat-top"><span className="muted">Spin-the-wheel reward -- {wheelDiscountPct}% off</span><span className="mono" style={{ color: "#16A34A" }}>-{naira((sellerSubtotal + platformFee) * wheelDiscountPct / 100)}</span></div>}
-          <div className="cat-top"><span className="muted">Delivery {peak && !freeDeliveryWon && <span className="status-pill route">Peak hours -- until {peakEndsAt()}</span>} {freeDeliveryWon && <span className="status-pill done">Spin-the-wheel reward</span>}</span><span className="mono">{delivery === 0 ? "Free" : naira(delivery)}</span></div>
+          <div className="cat-top"><span className="muted">Delivery {peak && !deliveryRewardWon && <span className="status-pill route">Peak hours -- until {peakEndsAt()}</span>} {deliveryRewardWon && <span className="status-pill done">{deliveryRewardPct(activeDiscount)}% off reward</span>}</span><span className="mono">{naira(delivery)}</span></div>
           {tipPoints > 0 && <div className="cat-top"><span className="muted">Rider tip</span><span className="mono">{tipPoints.toLocaleString()} pts</span></div>}
           {topUpPoints > 0 && <div className="cat-top"><span className="muted">Point top-up ({topUpPoints} pts)</span><span className="mono">{naira(topUpPoints)}</span></div>}
           <div className="cat-top" style={{ fontWeight: 700, borderTop: "1px solid var(--border)", paddingTop: 8 }}><span>Total</span><span className="mono">{naira(total)}</span></div>
@@ -3257,8 +3261,8 @@ function ReceiptModal({ order, onClose }) {
   if (!order) return null;
   const items = (order.items || []).map((c) => ({ ...c, product: productById(c.productId) }));
   const sellerSubtotal = items.reduce((s, i) => s + i.sellerPrice * i.qty, 0);
-  const platformFee = sellerSubtotal * PRODUCT_COMMISSION_RATE;
-  const otherCharges = Math.max(0, order.total - sellerSubtotal - platformFee);
+  const itemsTotal = Math.round(withMarkup(sellerSubtotal));
+  const deliveryCharge = Math.max(0, order.total - itemsTotal);
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="confirm-modal enter" onClick={(e) => e.stopPropagation()}>
@@ -3267,10 +3271,9 @@ function ReceiptModal({ order, onClose }) {
           <div className="card-name" style={{ fontSize: 16, marginBottom: 2 }}>Receipt</div>
           <div className="muted small" style={{ marginBottom: 16 }}>Order #{order.id} -- paid via Medra</div>
           <div className="list-col">
-            {items.map((i) => <div key={i.key} className="cat-top"><span className="muted">{i.qty} x {i.product?.name}</span><span className="mono">{naira(i.sellerPrice * i.qty)}</span></div>)}
-            <div className="cat-top" style={{ borderTop: "1px solid var(--border)", paddingTop: 8 }}><span className="muted">Items subtotal</span><span className="mono">{naira(sellerSubtotal)}</span></div>
-            <div className="cat-top"><span className="muted">Service fee</span><span className="mono">{naira(platformFee)}</span></div>
-            {otherCharges > 0 && <div className="cat-top"><span className="muted">Delivery & other charges</span><span className="mono">{naira(otherCharges)}</span></div>}
+            {items.map((i) => <div key={i.key} className="cat-top"><span className="muted">{i.qty} x {i.product?.name}</span><span className="mono">{naira(withMarkup(i.sellerPrice * i.qty))}</span></div>)}
+            <div className="cat-top" style={{ borderTop: "1px solid var(--border)", paddingTop: 8 }}><span className="muted">Items</span><span className="mono">{naira(itemsTotal)}</span></div>
+            <div className="cat-top"><span className="muted">Delivery</span><span className="mono">{naira(deliveryCharge)}</span></div>
             <div className="cat-top" style={{ fontWeight: 700, borderTop: "1px solid var(--border)", paddingTop: 8 }}><span>Total paid</span><span className="mono">{naira(order.total)}</span></div>
           </div>
         </div>
@@ -3329,7 +3332,7 @@ function OrdersScreen({ orders, onReorder, onReorderModify, onCancel, returnRequ
   const [statusFilter, setStatusFilter] = useState("all");
   const [minAmount, setMinAmount] = useState("");
   const [maxAmount, setMaxAmount] = useState("");
-  const merged = orders.map((o) => ({ id: o.id, vendor: "Medra Order", date: "Today", total: o.total, status: o.status === "delivered" ? "Delivered" : o.status === "placed" ? "Processing" : "Out for Delivery", cancellable: o.status === "placed", live: true, items: o.items })).reverse().concat(RECENT_ORDERS);
+  const merged = orders.map((o) => ({ id: o.id, vendor: "Medra Order", date: "Today", total: o.total, status: o.status === "delivered" ? "Delivered" : o.status === "placed" ? "Placed" : "Out for Delivery", cancellable: o.status === "placed", live: true, items: o.items })).reverse().concat(RECENT_ORDERS);
   const filtered = merged.filter((o) => {
     const matchesQuery = !query.trim() || o.vendor.toLowerCase().includes(query.trim().toLowerCase()) || o.id.toLowerCase().includes(query.trim().toLowerCase());
     const matchesStatus = statusFilter === "all" || o.status === statusFilter;
@@ -3797,7 +3800,7 @@ const LEADERBOARD_SEED = [
   { name: "Sarah A.", points: 3400 },
 ];
 const LEADERBOARD_REWARD = (rank, anon) => {
-  if (rank === 1) return anon ? "80% off delivery voucher (20% less for staying anonymous)" : "Free delivery voucher";
+  if (rank === 1) return anon ? "40% off delivery voucher (20% less for staying anonymous)" : "50% off delivery voucher";
   const pct = anon ? 1.6 : 2;
   return `${pct}% off next order${anon ? " (20% less for staying anonymous)" : ""}`;
 };
@@ -3948,7 +3951,7 @@ function RewardsScreen({ points, lifetimePoints, gamesDone, onGameComplete, cele
     setLastSpinAt(Date.now());
     if (prize.type === "points") earnPoints?.(prize.value);
     else if (prize.type === "discount") setActiveDiscount(prize.value);
-    else if (prize.type === "free_delivery") setActiveDiscount("free_delivery");
+    else if (prize.type === "delivery_50") setActiveDiscount("delivery_50");
   };
 
   return (
@@ -4017,7 +4020,7 @@ function RewardsScreen({ points, lifetimePoints, gamesDone, onGameComplete, cele
         <ProportionalSpinWheel canSpin={canSpin} onWin={handleWheelWin} nextSpinLabel={nextSpinDate ? `Next spin available ${nextSpinDate.toLocaleDateString()}` : ""} />
         {activeDiscount && (
           <div className="muted small" style={{ marginTop: 10 }}>
-            {activeDiscount === "free_delivery" ? "Free delivery is active on your next order." : `${activeDiscount}% off is active on your next order.`}
+            {isDeliveryReward(activeDiscount) ? `${deliveryRewardPct(activeDiscount)}% off delivery is active on your next order.` : `${activeDiscount}% off is active on your next order.`}
           </div>
         )}
       </div>
@@ -4149,7 +4152,7 @@ function RewardsScreen({ points, lifetimePoints, gamesDone, onGameComplete, cele
 
       <div className="panel enter">
         <div className="panel-title">Monthly leaderboard</div>
-        <div className="muted small" style={{ marginBottom: 10 }}>Top 5 this month, by points earned -- requires a daily login and a daily purchase to stay on the board. Rank 1 wins a free delivery voucher, ranks 2-5 win 2% off their next order. Appearing anonymous means 20% less on any reward you win -- change this under Settings.</div>
+        <div className="muted small" style={{ marginBottom: 10 }}>Top 5 this month, by points earned -- requires a daily login and a daily purchase to stay on the board. Rank 1 wins a 50% off delivery voucher, ranks 2-5 win 2% off their next order. Appearing anonymous means 20% less on any reward you win -- change this under Settings.</div>
         <div className="list-col">
           {[...LEADERBOARD_SEED, { name: "You", points: lifetimePoints }]
             .sort((a, b) => b.points - a.points)
@@ -4178,7 +4181,7 @@ function RewardsScreen({ points, lifetimePoints, gamesDone, onGameComplete, cele
               ) : (
                 <button className="ghost-btn-sm" onClick={() => {
                   const anon = leaderboardAnon;
-                  setActiveDiscount(myRank === 1 ? "free_delivery" : (anon ? 1.6 : 2));
+                  setActiveDiscount(myRank === 1 ? (anon ? "delivery_40" : "delivery_50") : (anon ? 1.6 : 2));
                   setLeaderboardClaimedMonth(monthId);
                 }}>Claim rank #{myRank} reward -- {LEADERBOARD_REWARD(myRank, leaderboardAnon)}</button>
               )}
@@ -4624,7 +4627,7 @@ function MembershipScreen({ wallet, membership, onSubscribe, onCancel, onPause, 
               ) : (
                 <button className="ghost-btn-sm" disabled={pausesRemaining === 0} onClick={onPause}>Pause for a month</button>
               )}
-              <button className="ghost-btn-sm" onClick={onCancel}>Cancel membership</button>
+              <button className="ghost-btn-sm" onClick={() => confirmAction({ title: "Cancel your membership?", message: "You will lose your points multiplier and member perks.", confirmLabel: "Cancel membership" }, () => onCancel())}>Cancel membership</button>
             </div>
           )}
         </div>
@@ -5539,7 +5542,7 @@ function WishListScreen({ points, wishes, onCreateWish, onContribute, onDismiss 
               <div className="cat-top" style={{ marginBottom: 6 }}><span className="muted small">{w.current.toLocaleString()} / {w.goal.toLocaleString()} points</span><span className="mono small">{pct}%</span></div>
               <div className="bar-track" style={{ marginBottom: 10 }}><div className="bar-fill-h" style={{ width: `${pct}%`, background: done ? "#16A34A" : "var(--purple)" }} /></div>
               {done ? (
-                <button className="ghost-btn-sm" onClick={() => onDismiss(w.id)}>Clear this wish</button>
+                <button className="ghost-btn-sm" onClick={() => confirmAction({ title: "Clear this wish?", message: "It will be removed from your wishlist alerts.", confirmLabel: "Clear" }, () => onDismiss(w.id))}>Clear this wish</button>
               ) : (
                 <div className="cat-top" style={{ gap: 8 }}>
                   <input type="number" min="1" max={Math.min(points, w.goal - w.current)} placeholder="Points" value={draft} style={{ width: 100 }} onChange={(e) => setContributeAmounts((d) => ({ ...d, [w.id]: e.target.value }))} />
@@ -5669,7 +5672,7 @@ function GroupOrdersScreen({ groupOrders, onCreate, onAddMember, onAddItem, onRe
                           {m.items.map((it, ii) => (
                             <div key={ii} className="cat-top" style={{ marginTop: 4 }}>
                               <span className="muted small">{it.qty}x {it.name}</span>
-                              <span className="muted small">{naira(it.price * it.qty)} {g.status !== "placed" && <button className="round-btn deny" style={{ marginLeft: 6 }} onClick={() => onRemoveItem(g.id, m.id, ii)}><X size={10} /></button>}</span>
+                              <span className="muted small">{naira(it.price * it.qty)} {g.status !== "placed" && <button className="round-btn deny" style={{ marginLeft: 6 }} onClick={() => confirmAction({ title: "Remove this item?", message: "It will be taken out of the group order.", confirmLabel: "Remove" }, () => onRemoveItem(g.id, m.id, ii))}><X size={10} /></button>}</span>
                             </div>
                           ))}
                           {g.status !== "placed" && (
@@ -6304,7 +6307,7 @@ function PaymentMethodsScreen({ cards, setCards }) {
               <CreditCard size={16} />
               <div className="ti-mid"><div className="card-name">{c.brand} •••• {c.last4} {c.isDefault && <span className="status-pill done" style={{ marginLeft: 6 }}>Default</span>}</div><div className="muted">Expires {c.expiry}</div></div>
               {!c.isDefault && <button className="ghost-btn-sm" onClick={() => setDefault(i)}>Set as default</button>}
-              <button className="round-btn deny" onClick={() => removeCard(i)}><X size={12} /></button>
+              <button className="round-btn deny" onClick={() => confirmAction({ title: "Remove this card?", message: "You will need to add it again to use it for payments.", confirmLabel: "Remove card" }, () => removeCard(i))}><X size={12} /></button>
             </div>
           ))}
           <div className="pending-row"><Wallet size={16} /><div className="ti-mid"><div className="card-name">Medra Wallet</div><div className="muted">Default for orders under ₦2,000</div></div></div>
@@ -6724,7 +6727,7 @@ function HouseholdScreen({ orders, onToggleShareOrder }) {
               <div className="driver-avatar sm">{m.name[0]}</div>
               <div className="ti-mid"><div className="card-name">{m.name}</div><div className="muted small">{m.relationship}{m.email ? ` -- ${m.email}` : ""}</div></div>
               <span className={`status-pill ${m.status === "active" ? "done" : "prep"}`}>{m.status === "active" ? "Active" : "Invited"}</span>
-              {m.relationship !== "Owner" && <button className="ghost-btn-sm" onClick={() => removeMember(m.id)}><X size={12} /></button>}
+              {m.relationship !== "Owner" && <button className="ghost-btn-sm" onClick={() => confirmAction({ title: "Remove this member?", message: "They will lose access to your household account.", confirmLabel: "Remove member" }, () => removeMember(m.id))}><X size={12} /></button>}
             </div>
           ))}
         </div>
@@ -7398,6 +7401,38 @@ function LoginScreen({ onLogin, onGuestBrowse }) {
               {mode === "signin" && onGuestBrowse && <button type="button" className="link-btn" style={{ display: "block", margin: "14px auto 0", textAlign: "center" }} onClick={onGuestBrowse}>Just browsing? Continue as guest</button>}
             </>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------
+   CONFIRMATION DIALOG -- one shared modal for destructive actions.
+   Call confirmAction({ title, message, confirmLabel }, onConfirm);
+   <ConfirmHost /> (mounted once at the app root) renders the dialog.
+   ------------------------------------------------------------ */
+let _confirmHandler = null;
+function confirmAction(opts, onConfirm) {
+  if (_confirmHandler) _confirmHandler({ ...opts, onConfirm });
+  else onConfirm();
+}
+function ConfirmHost() {
+  const [req, setReq] = useState(null);
+  useEffect(() => {
+    _confirmHandler = setReq;
+    return () => { if (_confirmHandler === setReq) _confirmHandler = null; };
+  }, []);
+  if (!req) return null;
+  const close = () => setReq(null);
+  return (
+    <div className="modal-backdrop" onClick={close}>
+      <div className="confirm-modal enter" role="alertdialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+        <div className="card-name" style={{ fontSize: 16, marginBottom: 6 }}>{req.title || "Are you sure?"}</div>
+        <div className="muted" style={{ marginBottom: 16 }}>{req.message || "This can't be undone in this preview."}</div>
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <button className="ghost-btn-sm" onClick={close}>Keep it</button>
+          <button className="primary-btn-sm" style={{ background: "#DC2626" }} autoFocus onClick={() => { const fn = req.onConfirm; close(); fn && fn(); }}>{req.confirmLabel || "Yes, continue"}</button>
         </div>
       </div>
     </div>
@@ -8472,8 +8507,8 @@ export default function MedraApp({ sharedAuthed, onAuth, onLogout, sharedOrderSt
 
   const SCREENS = {
     dashboard: <DashboardScreen loading={loading} wallet={wallet} points={points} lifetimePoints={lifetimePoints} onOpenProduct={openProduct} wishlist={wishlist} toggleWishlist={toggleWishlist} activeOrder={activeOrder} onTrack={() => setActive("track-order")} onSearch={(q) => { setShopQuery(q); setActive("shop"); }} onNavigate={setActive} recentlyViewed={recentlyViewed} orders={orders} fanClubs={fanClubs} cart={cart} cartUpdatedAt={cartUpdatedAt} onOpenCart={() => setCartOpen(true)} onTrackOrderId={(id) => { setActiveOrderId(id); setActive("track-order"); }} dismissedTipReminders={dismissedTipReminders} onDismissTipReminder={(id) => setDismissedTipReminders((s) => new Set(s).add(id))} />,
-    "my-orders": <OrdersScreen orders={orders} onReorder={reorder} onReorderModify={(o) => setReorderModifyOrder(o)} onCancel={cancelOrder} returnRequests={returnRequests} />,
-    "track-order": <TrackingScreen order={activeOrder} driver={activeOrder?.driver} onRate={rateOrder} onCancel={() => activeOrder && cancelOrder(activeOrder.id)} onTip={tipDriver} onEdit={() => activeOrder && editOrder(activeOrder)} onTogglePause={togglePause} onReportSubmitted={(report) => { setGiveawayDisqualified(true); if (activeOrder) setReturnRequests((r) => [{ id: "RT" + Math.floor(1000 + Math.random() * 8999), orderId: activeOrder.id, ...report, status: "under review", submittedAt: new Date().toLocaleDateString() }, ...r]); }} onConfirmDelivery={confirmDelivery} points={points} onGetHelp={(id) => { setSupportPrefillOrderId(id); setActive("support"); }} />,
+    "my-orders": <OrdersScreen orders={orders} onReorder={reorder} onReorderModify={(o) => setReorderModifyOrder(o)} onCancel={(id) => confirmAction({ title: "Cancel this order?", message: "The seller will be notified and the order will stop.", confirmLabel: "Cancel order" }, () => cancelOrder(id))} returnRequests={returnRequests} />,
+    "track-order": <TrackingScreen order={activeOrder} driver={activeOrder?.driver} onRate={rateOrder} onCancel={() => activeOrder && confirmAction({ title: "Cancel this order?", message: "The seller will be notified and the order will stop.", confirmLabel: "Cancel order" }, () => cancelOrder(activeOrder.id))} onTip={tipDriver} onEdit={() => activeOrder && editOrder(activeOrder)} onTogglePause={togglePause} onReportSubmitted={(report) => { setGiveawayDisqualified(true); if (activeOrder) setReturnRequests((r) => [{ id: "RT" + Math.floor(1000 + Math.random() * 8999), orderId: activeOrder.id, ...report, status: "under review", submittedAt: new Date().toLocaleDateString() }, ...r]); }} onConfirmDelivery={confirmDelivery} points={points} onGetHelp={(id) => { setSupportPrefillOrderId(id); setActive("support"); }} />,
     checkout: <CheckoutScreen cart={cart} points={points} wallet={wallet} autoConfirm={reorderConfirm} onAutoConfirmed={() => setReorderConfirm(false)} onPlace={placeOrder} onAddToCart={(p) => addToCart(getSellersForProduct(p)[0], 1)} savedPayMethod={savedPayMethod} onSavePayMethod={setSavedPayMethod} pointsRemainingThisMonth={Math.max(0, POINTS_MONTHLY_USAGE_CAP - pointsUsedThisMonth)} activeDiscount={activeDiscount} savedRecipients={savedRecipients} isOffline={isOffline} />,
     wishlist: <WishlistScreen wishlist={wishlist} onOpenProduct={openProduct} toggleWishlist={toggleWishlist} notifyPrefs={notifyPrefs} toggleNotifyPref={toggleNotifyPref} setAllNotifyPrefs={setAllNotifyPrefs} onBrowse={() => setActive("shop")} onAddAllToCart={() => { const items = PRODUCTS.filter((p) => wishlist.has(p.id)); items.forEach((p) => addToCart(getSellersForProduct(p)[0], 1)); showToast(`${items.length} item${items.length !== 1 ? "s" : ""} added to cart`); }} />,
     "gift-guide": <GiftGuideScreen onOpenProduct={openProduct} wishlist={wishlist} toggleWishlist={toggleWishlist} />,
@@ -8525,7 +8560,7 @@ export default function MedraApp({ sharedAuthed, onAuth, onLogout, sharedOrderSt
     "ai-assistant": <AIAssistantScreen activeOrder={activeOrder} orders={orders} points={points} onNavigate={setActive} />,
     addresses: <AddressesScreen onToast={showToast} />,
     "payment-methods": <PaymentMethodsScreen cards={cards} setCards={setCards} />,
-    subscriptions: <SubscriptionsScreen subscriptions={subscriptions} wallet={wallet} onCharge={chargeSubscription} onCancel={cancelSubscription} onPause={(id) => setSubscriptions((s) => s.map((x) => x.id === id ? { ...x, paused: true } : x))} onResume={(id) => setSubscriptions((s) => s.map((x) => x.id === id ? { ...x, paused: false } : x))} onPauseAll={() => { setSubscriptions((s) => s.map((x) => x.active ? { ...x, paused: true } : x)); showToast("All subscriptions paused"); }} onResumeAll={() => { setSubscriptions((s) => s.map((x) => x.active ? { ...x, paused: false } : x)); showToast("All subscriptions resumed"); }} />,
+    subscriptions: <SubscriptionsScreen subscriptions={subscriptions} wallet={wallet} onCharge={chargeSubscription} onCancel={(id) => confirmAction({ title: "Cancel this subscription?", message: "Future auto-reorders will stop.", confirmLabel: "Cancel subscription" }, () => cancelSubscription(id))} onPause={(id) => setSubscriptions((s) => s.map((x) => x.id === id ? { ...x, paused: true } : x))} onResume={(id) => setSubscriptions((s) => s.map((x) => x.id === id ? { ...x, paused: false } : x))} onPauseAll={() => { setSubscriptions((s) => s.map((x) => x.active ? { ...x, paused: true } : x)); showToast("All subscriptions paused"); }} onResumeAll={() => { setSubscriptions((s) => s.map((x) => x.active ? { ...x, paused: false } : x)); showToast("All subscriptions resumed"); }} />,
     settings: <SettingsScreen onOpenThemes={() => setActive("themes")} showMyPhoto={showMyPhoto} setShowMyPhoto={setShowMyPhoto} onReplayTour={replayTour} onApply={(role) => { setApplyRole(role); setActive("apply"); }} onOpenLegal={(doc) => { setLegalDoc(doc); setActive("legal"); }} textSize={textSize} setTextSize={setTextSize} darkMode={darkMode} setDarkMode={setDarkMode} darkModeAuto={darkModeAuto} setDarkModeAuto={setDarkModeAuto} showCreatorProgram={showCreatorProgram} setShowCreatorProgram={setShowCreatorProgram} leaderboardAnon={leaderboardAnon} setLeaderboardAnon={setLeaderboardAnon} reduceMotion={reduceMotion} setReduceMotion={setReduceMotion} onExportActivity={exportActivity} unitPref={unitPref} setUnitPref={setUnitPref} onOpenNotifications={() => setActive("notifications")} />,
     notifications: <NotificationsCenterScreen notifList={notifList} categoryPrefs={notifCategoryPrefs} setCategoryPrefs={setNotifCategoryPrefs} onOpen={setActive} pushPermission={pushPermission} onRequestPush={() => setPushPromptOpen(true)} />,
     "account-center": <AccountCenterScreen onNavigate={setActive} />,
@@ -8542,6 +8577,7 @@ export default function MedraApp({ sharedAuthed, onAuth, onLogout, sharedOrderSt
 
   return (
     <div className={`medra-root ${darkMode ? "dark" : ""} ${reduceMotion ? "reduce-motion" : ""}`} style={{ "--purple": theme.accent, "--purple-light": theme.accentLight, zoom: textSize === "large" ? 1.15 : 1 }}>
+      <ConfirmHost />
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" />
       <style>{CSS}</style>
       <a href="#main-content" className="skip-link">Skip to main content</a>

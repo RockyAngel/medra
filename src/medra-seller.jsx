@@ -64,7 +64,7 @@ const INVENTORY = [
 const RECENT_ORDERS = [
   { id: "MD28471", customer: "Amara Okeke", time: "2 mins ago", total: 1245, status: "Delivered", items: [{ productId: "i1", qty: 1 }] },
   { id: "MD28470", customer: "Chinedu John", time: "15 mins ago", total: 875, status: "Out for Delivery", items: [{ productId: "i4", qty: 2 }] },
-  { id: "MD28469", customer: "Sarah Ahmed", time: "1 hour ago", total: 1523, status: "Processing", items: [{ productId: "i5", qty: 1 }, { productId: "i2", qty: 1 }] },
+  { id: "MD28469", customer: "Sarah Ahmed", time: "1 hour ago", total: 1523, status: "Preparing", items: [{ productId: "i5", qty: 1 }, { productId: "i2", qty: 1 }] },
   { id: "MD28468", customer: "Tobi James", time: "2 hours ago", total: 560, status: "Cancelled", items: [{ productId: "i4", qty: 1 }] },
   { id: "MD28467", customer: "Blessing U.", time: "3 hours ago", total: 912, status: "Delivered", items: [{ productId: "i2", qty: 1 }, { productId: "i4", qty: 1 }] },
   { id: "MD28466", customer: "Priya Menon", time: "5 hours ago", total: 2599, status: "Delivered", items: [{ productId: "i3", qty: 1 }, { productId: "i1", qty: 1 }] },
@@ -177,9 +177,15 @@ function KpiCard({ k, comparePeriod }) {
   );
 }
 
+// Canonical order statuses -- one vocabulary across every app. Legacy/alias
+// labels are normalised so StatusPill always shows one of these five.
+const ORDER_STATUSES = ["Placed", "Preparing", "Out for Delivery", "Delivered", "Cancelled"];
+const ORDER_STATUS_ALIASES = { placed: "Placed", "order placed": "Placed", pending: "Placed", confirmed: "Placed", processing: "Preparing", preparing: "Preparing", scheduled: "Placed", onway: "Out for Delivery", "en route": "Out for Delivery", "out for delivery": "Out for Delivery", delivered: "Delivered", "delivered (simulated)": "Delivered", completed: "Delivered", cancelled: "Cancelled", canceled: "Cancelled" };
+const normalizeOrderStatus = (s) => ORDER_STATUS_ALIASES[String(s || "").toLowerCase()] || s;
 function StatusPill({ status }) {
-  const map = { Delivered: "done", "Delivered (Simulated)": "done", "Out for Delivery": "route", Processing: "prep", Cancelled: "delay" };
-  return <span className={`status-pill ${map[status] || ""}`}>{status}</span>;
+  const label = normalizeOrderStatus(status);
+  const map = { Delivered: "done", "Out for Delivery": "route", Preparing: "prep", Placed: "prep", Cancelled: "delay" };
+  return <span className={`status-pill ${map[label] || ""}`}>{label}</span>;
 }
 
 /* ============================================================
@@ -433,7 +439,7 @@ function OrderFlowScreen({ order, stage, onAccept, onReject, onReady, onComplete
           </div>
           <div className="muted" style={{ marginTop: 10 }}>{order.distance} to customer -- Est. prep time 10-15 min</div>
           <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-            <button className="ghost-btn" onClick={onReject}>Reject</button>
+            <button className="ghost-btn" onClick={() => confirmAction({ title: "Reject this order?", message: "The customer will be notified and the order cancelled.", confirmLabel: "Reject order" }, () => onReject())}>Reject</button>
             <button className="primary-btn-sm" onClick={onAccept}>Accept order</button>
           </div>
         </div>
@@ -531,7 +537,7 @@ function ReturnsScreen() {
                   <span className="status-pill prep">Requested</span>
                 </div>
                 <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                  <button className="ghost-btn-sm" onClick={() => resolve(r.id, "declined")}>Decline</button>
+                  <button className="ghost-btn-sm" onClick={() => confirmAction({ title: "Decline this request?", message: "The customer will be told it was declined.", confirmLabel: "Decline" }, () => resolve(r.id, "declined"))}>Decline</button>
                   <button className="primary-btn-sm" onClick={() => resolve(r.id, "approved")}>Approve refund</button>
                 </div>
               </div>
@@ -2140,7 +2146,7 @@ function LocationsScreen() {
               </div>
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                 <button className="ghost-btn-sm" onClick={() => toggleStatus(l.id)}>{l.status === "open" ? "Mark closed" : "Mark open"}</button>
-                {!l.isPrimary && <button className="ghost-btn-sm" onClick={() => removeLocation(l.id)}>Remove</button>}
+                {!l.isPrimary && <button className="ghost-btn-sm" onClick={() => confirmAction({ title: "Remove this location?", message: "Orders will no longer be routed to it.", confirmLabel: "Remove" }, () => removeLocation(l.id))}>Remove</button>}
               </div>
             </div>
           ))}
@@ -2536,6 +2542,38 @@ function LoginScreen({ onLogin }) {
   );
 }
 
+/* ------------------------------------------------------------
+   CONFIRMATION DIALOG -- one shared modal for destructive actions.
+   Call confirmAction({ title, message, confirmLabel }, onConfirm);
+   <ConfirmHost /> (mounted once at the app root) renders the dialog.
+   ------------------------------------------------------------ */
+let _confirmHandler = null;
+function confirmAction(opts, onConfirm) {
+  if (_confirmHandler) _confirmHandler({ ...opts, onConfirm });
+  else onConfirm();
+}
+function ConfirmHost() {
+  const [req, setReq] = useState(null);
+  useEffect(() => {
+    _confirmHandler = setReq;
+    return () => { if (_confirmHandler === setReq) _confirmHandler = null; };
+  }, []);
+  if (!req) return null;
+  const close = () => setReq(null);
+  return (
+    <div className="modal-backdrop" onClick={close}>
+      <div className="confirm-modal enter" role="alertdialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+        <div className="card-name" style={{ fontSize: 16, marginBottom: 6 }}>{req.title || "Are you sure?"}</div>
+        <div className="muted" style={{ marginBottom: 16 }}>{req.message || "This can't be undone in this preview."}</div>
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <button className="ghost-btn-sm" onClick={close}>Keep it</button>
+          <button className="primary-btn-sm" style={{ background: "#DC2626" }} autoFocus onClick={() => { const fn = req.onConfirm; close(); fn && fn(); }}>{req.confirmLabel || "Yes, continue"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function MedraSellerApp({ sharedAuthed, onAuth, onLogout, sharedOrderStore } = {}) {
   const [authed, setAuthedRaw] = useState(!!sharedAuthed);
   useEffect(() => { if (sharedAuthed) setAuthedRaw(true); }, [sharedAuthed]);
@@ -2669,6 +2707,7 @@ export default function MedraSellerApp({ sharedAuthed, onAuth, onLogout, sharedO
 
   return (
     <div className="medra-root">
+      <ConfirmHost />
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" />
       <style>{CSS}</style>
       {switchNotice && <div className="switch-toast"><ShieldCheck size={14} /> {switchNotice}</div>}

@@ -2233,6 +2233,38 @@ function LoginScreen({ onLogin }) {
   );
 }
 
+/* ------------------------------------------------------------
+   CONFIRMATION DIALOG -- one shared modal for destructive actions.
+   Call confirmAction({ title, message, confirmLabel }, onConfirm);
+   <ConfirmHost /> (mounted once at the app root) renders the dialog.
+   ------------------------------------------------------------ */
+let _confirmHandler = null;
+function confirmAction(opts, onConfirm) {
+  if (_confirmHandler) _confirmHandler({ ...opts, onConfirm });
+  else onConfirm();
+}
+function ConfirmHost() {
+  const [req, setReq] = useState(null);
+  useEffect(() => {
+    _confirmHandler = setReq;
+    return () => { if (_confirmHandler === setReq) _confirmHandler = null; };
+  }, []);
+  if (!req) return null;
+  const close = () => setReq(null);
+  return (
+    <div className="modal-backdrop" onClick={close}>
+      <div className="confirm-modal enter" role="alertdialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+        <div className="card-name" style={{ fontSize: 16, marginBottom: 6 }}>{req.title || "Are you sure?"}</div>
+        <div className="muted" style={{ marginBottom: 16 }}>{req.message || "This can't be undone in this preview."}</div>
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <button className="ghost-btn-sm" onClick={close}>Keep it</button>
+          <button className="primary-btn-sm" style={{ background: "#DC2626" }} autoFocus onClick={() => { const fn = req.onConfirm; close(); fn && fn(); }}>{req.confirmLabel || "Yes, continue"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function MedraRiderApp({ sharedAuthed, onAuth, onLogout, sharedOrderStore } = {}) {
   const [authed, setAuthedRaw] = useState(!!sharedAuthed);
   useEffect(() => { if (sharedAuthed) setAuthedRaw(true); }, [sharedAuthed]);
@@ -2370,6 +2402,7 @@ export default function MedraRiderApp({ sharedAuthed, onAuth, onLogout, sharedOr
 
   return (
     <div className="medra-root">
+      <ConfirmHost />
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" />
       <style>{CSS}</style>
       {switchNotice && <div className="switch-toast"><ShieldCheck size={14} /> {switchNotice}</div>}

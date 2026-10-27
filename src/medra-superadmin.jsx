@@ -40,8 +40,10 @@ const DELIVERY_COMMISSION_PEAK = 0.10;
 
 // productTotal = what the customer paid for items (seller price + 10%).
 // deliveryFee = the gross delivery fee before the platform's cut.
+// Canonical order statuses -- same five in every app.
+const ORDER_STATUSES = ["Placed", "Preparing", "Out for Delivery", "Delivered", "Cancelled"];
 const ORDERS_LEDGER = [
-  { id: "O5581", customer: "Jordan B.", vendor: "Northside Espresso Bar", productTotal: 3023, deliveryFee: 900, status: "En route", peak: false },
+  { id: "O5581", customer: "Jordan B.", vendor: "Northside Espresso Bar", productTotal: 3023, deliveryFee: 900, status: "Out for Delivery", peak: false },
   { id: "O5579", customer: "Priya M.", vendor: "Fresh Fields Grocery", productTotal: 1450, deliveryFee: 700, status: "Preparing", peak: false },
   { id: "O5574", customer: "Devon K.", vendor: "Ceramic & Co.", productTotal: 2173, deliveryFee: 1200, status: "Delivered", peak: true },
   { id: "O5566", customer: "Guest (08033219876)", vendor: "Fresh Fields Grocery", productTotal: 1610, deliveryFee: 700, status: "Delivered", peak: false, isGuest: true },
@@ -409,7 +411,7 @@ const FEATURE_FLAGS = [
   { key: "printable_shortcuts_cheatsheet", app: "Platform-wide", label: "Printable Keyboard Shortcuts", desc: "The keyboard shortcuts modal (Admin/Support/Super Admin) now has a real \u201cPrint / Save as PDF\u201d button", status: "enabled" },
   { key: "customer_delivery_photo_gallery", app: "Customer", label: "Delivery Photo Gallery", desc: "A real gallery of proof-of-delivery photos from your riders -- populated when using Combined Preview, where Rider's photo capture connects to your actual orders", status: "enabled" },
   { key: "household_spending_breakdown", app: "Customer", label: "Household Spending Breakdown", desc: "Real per-member spending bars across shared household orders -- attribution is deterministic since orders don't yet track who in the household placed them", status: "enabled" },
-  { key: "free_delivery_countdown", app: "Customer", label: "Free Delivery Countdown", desc: "The cart already had a real free-delivery threshold in its fee logic with no visible UI for it -- now shows a real progress bar and \u201cAdd \u20a6X more\u201d prompt", status: "enabled" },
+  { key: "free_delivery_countdown", app: "Customer", label: "Delivery Fee Rewards", desc: "Delivery is never free -- cart and checkout always show a delivery fee. Spin-the-wheel and leaderboard rewards now take a percentage off the fee instead of waiving it (the old free-delivery progress bar was removed)", status: "enabled" },
   { key: "support_draft_autosave", app: "Support", label: "Reply Draft Auto-Save", desc: "An in-progress reply now survives navigating away and back -- previously lost the moment you switched tickets or screens", status: "enabled" },
   { key: "support_shift_handoff", app: "Support", label: "Shift Handoff Notes", desc: "A real shared log for leaving context to whoever picks up the queue next -- what's in progress, what to watch, what's unresolved", status: "enabled" },
   { key: "support_ticket_reopen_tracking", app: "Support", label: "Ticket Reopening with Reason Tracking", desc: "Resolved tickets previously had no way to reopen at all -- now a real reason is required, and reopen history is tracked and shown on the ticket", status: "enabled" },
@@ -1133,7 +1135,7 @@ function KycVerificationsSection() {
                   {a.status === "pending" ? (
                     <>
                       <button className="ghost-btn-sm" onClick={() => decide(a.id, "verified")}>Approve</button>
-                      <button className="ghost-btn-sm deny" onClick={() => decide(a.id, "rejected")}>Reject</button>
+                      <button className="ghost-btn-sm deny" onClick={() => confirmAction({ title: "Reject this application?", message: "The applicant will be notified.", confirmLabel: "Reject" }, () => decide(a.id, "rejected"))}>Reject</button>
                     </>
                   ) : (
                     <button className="ghost-btn-sm" onClick={() => decide(a.id, "pending")}>Reopen</button>
@@ -1569,7 +1571,7 @@ function ModerationSection() {
                 <div className="muted small" style={{ margin: "8px 0" }}>{m.detail}</div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button className="ghost-btn-sm" onClick={() => resolve(m.id, "dismissed")}>Dismiss</button>
-                  <button className="primary-btn-sm" style={{ background: "#DC2626" }} onClick={() => resolve(m.id, "removed")}>Remove content</button>
+                  <button className="primary-btn-sm" style={{ background: "#DC2626" }} onClick={() => confirmAction({ title: "Remove this content?", message: "It will be taken down from the platform.", confirmLabel: "Remove content" }, () => resolve(m.id, "removed"))}>Remove content</button>
                 </div>
               </div>
             ))}
@@ -1864,7 +1866,7 @@ function OrdersLedgerSection() {
   const [saveOpen, setSaveOpen] = useState(false);
   const [viewName, setViewName] = useState("");
   const filtered = statusFilter === "all" ? ORDERS_LEDGER : ORDERS_LEDGER.filter((o) => o.status === statusFilter);
-  const statuses = ["all", ...new Set(ORDERS_LEDGER.map((o) => o.status))];
+  const statuses = ["all", ...ORDER_STATUSES];
   const saveView = () => {
     if (!viewName.trim()) return;
     setSavedViews((v) => [...v, { name: viewName, status: statusFilter }]);
@@ -2192,7 +2194,7 @@ function PromotionsSection() {
             <div className="field" style={{ marginBottom: 10 }}>
               <span>Type</span>
               <select className="sort-select" value={type} onChange={(e) => setType(e.target.value)}>
-                <option>Percent off</option><option>Fixed amount off</option><option>Featured placement</option><option>Free delivery</option>
+                <option>Percent off</option><option>Fixed amount off</option><option>Featured placement</option><option>Delivery discount</option>
               </select>
             </div>
             <div className="field" style={{ marginBottom: 10 }}><span>Value</span><input type="text" value={value} onChange={(e) => setValue(e.target.value)} placeholder="e.g. 20% or ₦1,000" /></div>
@@ -2207,7 +2209,7 @@ function PromotionsSection() {
             <button className="modal-close" onClick={() => setAbModalFor(null)}><X size={16} /></button>
             <div className="card-name" style={{ fontSize: 16, marginBottom: 12 }}>Start A/B test</div>
             <div className="muted small" style={{ marginBottom: 12 }}>Half of eligible customers see the current value (Variant A), half see Variant B. Simulated performance for this prototype phase.</div>
-            <div className="field" style={{ marginBottom: 16 }}><span>Variant B value</span><input type="text" value={variantBValue} onChange={(e) => setVariantBValue(e.target.value)} placeholder="e.g. 25% or Free delivery" /></div>
+            <div className="field" style={{ marginBottom: 16 }}><span>Variant B value</span><input type="text" value={variantBValue} onChange={(e) => setVariantBValue(e.target.value)} placeholder="e.g. 25% or 50% off delivery" /></div>
             <button className="primary-btn-sm wide" disabled={!variantBValue.trim()} onClick={startAbTest}>Start test</button>
           </div>
         </div>
@@ -2225,7 +2227,7 @@ function PromotionsSection() {
                   <td style={{ display: "flex", gap: 6 }}>
                     <button className="ghost-btn-sm" onClick={() => toggleStatus(p.id)}>{p.status === "active" ? "Pause" : "Activate"}</button>
                     {!p.abTest && <button className="ghost-btn-sm" onClick={() => setAbModalFor(p.id)}>A/B test</button>}
-                    <button className="ghost-btn-sm deny" onClick={() => remove(p.id)}>Delete</button>
+                    <button className="ghost-btn-sm deny" onClick={() => confirmAction({ title: "Delete this item?", message: "It will be permanently removed in this preview.", confirmLabel: "Delete" }, () => remove(p.id))}>Delete</button>
                   </td>
                 </tr>
                 {p.abTest && (
@@ -2292,7 +2294,7 @@ function ReferralSection() {
 }
 
 const MEMBERSHIP_PLANS_SEED = [
-  { id: "MP1", name: "Medra Plus", monthly: 999, annual: 9990, members: 12400, perks: "Free delivery, 2x points" },
+  { id: "MP1", name: "Medra Plus", monthly: 999, annual: 9990, members: 12400, perks: "Delivery discounts, 2x points" },
 ];
 function MembershipPlansSection() {
   const [plans, setPlans] = useState(MEMBERSHIP_PLANS_SEED);
@@ -2316,7 +2318,7 @@ function MembershipPlansSection() {
           <div className="field" style={{ marginBottom: 10 }}><span>Name</span><input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Medra Plus" /></div>
           <div className="field" style={{ marginBottom: 10 }}><span>Monthly price (\u20a6)</span><input type="number" value={monthly} onChange={(e) => setMonthly(Number(e.target.value) || 0)} /></div>
           <div className="field" style={{ marginBottom: 10 }}><span>Annual price (\u20a6)</span><input type="number" value={annual} onChange={(e) => setAnnual(Number(e.target.value) || 0)} /></div>
-          <div className="field" style={{ marginBottom: 16 }}><span>Perks</span><input type="text" value={perks} onChange={(e) => setPerks(e.target.value)} placeholder="e.g. Free delivery, 2x points" /></div>
+          <div className="field" style={{ marginBottom: 16 }}><span>Perks</span><input type="text" value={perks} onChange={(e) => setPerks(e.target.value)} placeholder="e.g. Delivery discounts, 2x points" /></div>
           <button className="primary-btn-sm wide" disabled={!name.trim()} onClick={() => onSave({ id: plan?.id || `MP${Date.now()}`, name: name.trim(), monthly, annual, members: plan?.members || 0, perks: perks.trim() })}>Save plan</button>
         </div>
       </div>
@@ -2335,7 +2337,7 @@ function MembershipPlansSection() {
                 <td className="card-name">{p.name}</td><td>{money(p.monthly)}/mo</td><td>{money(p.annual)}/yr</td><td>{p.members.toLocaleString()}</td><td className="muted small">{p.perks}</td>
                 <td style={{ display: "flex", gap: 6 }}>
                   <button className="ghost-btn-sm" onClick={() => setEditing(p)}>Edit</button>
-                  <button className="ghost-btn-sm deny" onClick={() => remove(p.id)}>Delete</button>
+                  <button className="ghost-btn-sm deny" onClick={() => confirmAction({ title: "Delete this item?", message: "It will be permanently removed in this preview.", confirmLabel: "Delete" }, () => remove(p.id))}>Delete</button>
                 </td>
               </tr>
             ))}
@@ -2939,7 +2941,7 @@ function CommissionEngineSection() {
               <span className="muted small" style={{ flex: 1 }}>{c.category}</span>
               <input type="number" min="0" max="100" style={{ width: 70 }} value={c.rate} onChange={(e) => updateOverride(c.category, e.target.value)} />
               <span className="muted small">%</span>
-              <button className="ghost-btn-sm" onClick={() => removeOverride(c.category)}>Remove</button>
+              <button className="ghost-btn-sm" onClick={() => confirmAction({ title: "Remove this override?", message: "The category goes back to the default commission rate.", confirmLabel: "Remove" }, () => removeOverride(c.category))}>Remove</button>
             </div>
           ))}
         </div>
@@ -3082,7 +3084,7 @@ function CategoriesSection() {
               ) : (
                 <button className="ghost-btn-sm" onClick={() => startEdit(i)}>Rename</button>
               )}
-              <button className="ghost-btn-sm deny" onClick={() => remove(i)}>Delete</button>
+              <button className="ghost-btn-sm deny" onClick={() => confirmAction({ title: "Delete this item?", message: "It will be permanently removed in this preview.", confirmLabel: "Delete" }, () => remove(i))}>Delete</button>
             </div>
           ))}
         </div>
@@ -3152,7 +3154,7 @@ function AppSettingsSection() {
 function DeliverySettingsSection() {
   const [radius, setRadius] = useState(8);
   const [surcharge, setSurcharge] = useState(1.3);
-  const [threshold, setThreshold] = useState(5000);
+  const [minFee, setMinFee] = useState(600);
   const [saved, setSaved] = useState(false);
   const save = () => { setSaved(true); setTimeout(() => setSaved(false), 2000); };
   return (
@@ -3162,7 +3164,7 @@ function DeliverySettingsSection() {
         <PrototypeNote>saving here updates this screen only -- there's no backend yet to actually change customer/seller behavior. This is the config UI ready for that hookup.</PrototypeNote>
         <div className="field" style={{ marginBottom: 10 }}><span>Default delivery radius (miles)</span><input type="number" min="1" value={radius} onChange={(e) => setRadius(Number(e.target.value) || 0)} /></div>
         <div className="field" style={{ marginBottom: 10 }}><span>Peak hour surcharge (multiplier)</span><input type="number" min="1" step="0.1" value={surcharge} onChange={(e) => setSurcharge(Number(e.target.value) || 1)} /></div>
-        <div className="field" style={{ marginBottom: 16 }}><span>Free delivery threshold (\u20a6)</span><input type="number" min="0" value={threshold} onChange={(e) => setThreshold(Number(e.target.value) || 0)} /></div>
+        <div className="field" style={{ marginBottom: 16 }}><span>Minimum delivery fee (₦) -- delivery is never free</span><input type="number" min="1" value={minFee} onChange={(e) => setMinFee(Math.max(1, Number(e.target.value) || 1))} /></div>
         <button className="primary-btn-sm" onClick={save}>{saved ? "Saved for this preview" : "Save changes"}</button>
       </div>
     </div>
@@ -3363,7 +3365,7 @@ function GiveawayControlSection() {
   );
 }
 
-const COMMUNITY_CHALLENGE_REWARD_TYPES = ["Points", "Giveaway entries", "Discount codes", "Free delivery", "Mystery reward"];
+const COMMUNITY_CHALLENGE_REWARD_TYPES = ["Points", "Giveaway entries", "Discount codes", "Delivery discount", "Mystery reward"];
 
 const LOTTERY_ENTRIES_POOL = [
   { customer: "Amara Okeke", picks: [4, 12, 23, 41, 55, 80] },
@@ -4006,7 +4008,7 @@ function AdminRosterSection({ onViewAs, roles }) {
               </div>
               <button className="ghost-btn-sm" onClick={() => onViewAs?.(a.name, a.role === "Support Staff" ? "support" : "admin")}><Eye size={11} /> View As</button>
               <button className="ghost-btn-sm" onClick={() => setEditing(a)}><Pencil size={11} /> Edit</button>
-              <button className={`ghost-btn-sm ${a.status === "active" ? "deny" : ""}`} onClick={() => toggleStatus(a.id)}>{a.status === "active" ? "Suspend" : "Reactivate"}</button>
+              <button className={`ghost-btn-sm ${a.status === "active" ? "deny" : ""}`} onClick={() => a.status === "active" ? confirmAction({ title: "Suspend this staff member?", message: "They will lose access until you reactivate them.", confirmLabel: "Suspend" }, () => toggleStatus(a.id)) : toggleStatus(a.id)}>{a.status === "active" ? "Suspend" : "Reactivate"}</button>
             </div>
           ))}
         </div>
@@ -4231,6 +4233,38 @@ function StaffLoginScreen({ onLogin }) {
   );
 }
 
+/* ------------------------------------------------------------
+   CONFIRMATION DIALOG -- one shared modal for destructive actions.
+   Call confirmAction({ title, message, confirmLabel }, onConfirm);
+   <ConfirmHost /> (mounted once at the app root) renders the dialog.
+   ------------------------------------------------------------ */
+let _confirmHandler = null;
+function confirmAction(opts, onConfirm) {
+  if (_confirmHandler) _confirmHandler({ ...opts, onConfirm });
+  else onConfirm();
+}
+function ConfirmHost() {
+  const [req, setReq] = useState(null);
+  useEffect(() => {
+    _confirmHandler = setReq;
+    return () => { if (_confirmHandler === setReq) _confirmHandler = null; };
+  }, []);
+  if (!req) return null;
+  const close = () => setReq(null);
+  return (
+    <div className="modal-backdrop" onClick={close}>
+      <div className="confirm-modal enter" role="alertdialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+        <div className="card-name" style={{ fontSize: 16, marginBottom: 6 }}>{req.title || "Are you sure?"}</div>
+        <div className="muted" style={{ marginBottom: 16 }}>{req.message || "This can't be undone in this preview."}</div>
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <button className="ghost-btn-sm" onClick={close}>Keep it</button>
+          <button className="primary-btn-sm" style={{ background: "#DC2626" }} autoFocus onClick={() => { const fn = req.onConfirm; close(); fn && fn(); }}>{req.confirmLabel || "Yes, continue"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function MedraSuperAdminPortal({ sharedAuthed, onAuth, onLogout, sharedOrderStore } = {}) {
   const [authed, setAuthedRaw] = useState(!!sharedAuthed);
   useEffect(() => { if (sharedAuthed) setAuthedRaw(true); }, [sharedAuthed]);
@@ -4406,6 +4440,7 @@ export default function MedraSuperAdminPortal({ sharedAuthed, onAuth, onLogout, 
 
   return (
     <div className="medra-root">
+      <ConfirmHost />
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" />
       <style>{CSS}</style>
       {paletteOpen && <CommandPalette items={allSearchable} dataItems={allDataSearchable} recentKeys={recentPaletteKeys} recentEntities={recentlyViewed} onSelect={(key) => goTo(key, allSearchable.find((i) => i.key === key)?.sectionLabel)} onClose={() => setPaletteOpen(false)} />}

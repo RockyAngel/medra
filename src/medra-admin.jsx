@@ -29,8 +29,10 @@ const DELIVERY_COMMISSION_PEAK = 0.10;
 
 // productTotal = what the customer paid for items (seller price + 10%).
 // deliveryFee = the gross delivery fee before the platform's cut.
+// Canonical order statuses -- same five in every app.
+const ORDER_STATUSES = ["Placed", "Preparing", "Out for Delivery", "Delivered", "Cancelled"];
 const ORDERS_LEDGER = [
-  { id: "O5581", customer: "Jordan B.", vendor: "Northside Espresso Bar", productTotal: 3023, deliveryFee: 900, status: "En route", peak: false },
+  { id: "O5581", customer: "Jordan B.", vendor: "Northside Espresso Bar", productTotal: 3023, deliveryFee: 900, status: "Out for Delivery", peak: false },
   { id: "O5579", customer: "Priya M.", vendor: "Fresh Fields Grocery", productTotal: 1450, deliveryFee: 700, status: "Preparing", peak: false },
   { id: "O5574", customer: "Devon K.", vendor: "Ceramic & Co.", productTotal: 2173, deliveryFee: 1200, status: "Delivered", peak: true },
   { id: "O5568", customer: "Amara O.", vendor: "Runwell Sneaker Co.", productTotal: 8900, deliveryFee: 950, status: "Delivered", peak: false },
@@ -67,10 +69,10 @@ const LAST_WEEK_REVENUE_TREND = REVENUE_TREND.map((d) => ({ d: d.d, v: Math.roun
 
 const ORDER_MIX = [
   { name: "Delivered", value: 15230, display: "15,230 (61.3%)", color: "#16A34A" },
-  { name: "Processing", value: 5240, display: "5,240 (21.1%)", color: "#2563EB" },
+  { name: "Preparing", value: 5240, display: "5,240 (21.1%)", color: "#2563EB" },
   { name: "Out for Delivery", value: 2450, display: "2,450 (9.9%)", color: "#F97316" },
-  { name: "Pending", value: 1930, display: "1,930 (7.8%)", color: "#7C3AED" },
-  { name: "Canceled", value: 0, display: "0 (0.0%)", color: "#94A3B8" },
+  { name: "Placed", value: 1930, display: "1,930 (7.8%)", color: "#7C3AED" },
+  { name: "Cancelled", value: 0, display: "0 (0.0%)", color: "#94A3B8" },
 ];
 
 const RECENT_ACTIVITY = [
@@ -1674,7 +1676,7 @@ function KycVerificationsSection() {
           <div className="cat-top" style={{ marginBottom: 10, gap: 8 }}>
             <span className="muted small">{selected.size} selected</span>
             <button className="primary-btn-sm" onClick={() => batchDecide("verified")}>Approve all</button>
-            <button className="ghost-btn-sm deny" onClick={() => batchDecide("rejected")}>Reject all</button>
+            <button className="ghost-btn-sm deny" onClick={() => confirmAction({ title: "Reject all selected?", message: "Every selected application will be rejected and the applicants notified.", confirmLabel: "Reject all" }, () => batchDecide("rejected"))}>Reject all</button>
             <button className="ghost-btn-sm" onClick={() => setSelected(new Set())}>Clear</button>
           </div>
         )}
@@ -1690,7 +1692,7 @@ function KycVerificationsSection() {
                   {a.status === "pending" ? (
                     <>
                       <button className="ghost-btn-sm" onClick={() => decide(a.id, "verified")}>Approve</button>
-                      <button className="ghost-btn-sm deny" onClick={() => decide(a.id, "rejected")}>Reject</button>
+                      <button className="ghost-btn-sm deny" onClick={() => confirmAction({ title: "Reject this application?", message: "The applicant will be notified.", confirmLabel: "Reject" }, () => decide(a.id, "rejected"))}>Reject</button>
                     </>
                   ) : (
                     <button className="ghost-btn-sm" onClick={() => decide(a.id, "pending")}>Reopen</button>
@@ -1857,7 +1859,7 @@ function OrdersLedgerSection() {
   const filtered = statusFilter === "all" ? orders : orders.filter((o) => o.status === statusFilter);
   const totalPages = Math.max(1, Math.ceil(filtered.length / ORDERS_PER_PAGE));
   const pageItems = filtered.slice((page - 1) * ORDERS_PER_PAGE, page * ORDERS_PER_PAGE);
-  const statuses = [...new Set(orders.map((o) => o.status))];
+  const statuses = ORDER_STATUSES;
   const statusOptions = ["all", ...statuses];
   const toggleSel = (id) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const applyBulkStatus = () => {
@@ -2073,7 +2075,7 @@ function BroadcastSection() {
                   <div className="muted small">Trigger: {a.trigger}</div>
                   <div className="muted small" style={{ fontStyle: "italic" }}>"{a.template}"</div>
                 </div>
-                <button className="ghost-btn-sm" onClick={() => toggleAuto(a.key)}>{a.enabled ? "Disable" : "Enable"}</button>
+                <button className="ghost-btn-sm" onClick={() => a.enabled ? confirmAction({ title: "Disable this automation?", message: "It will stop running until you turn it back on.", confirmLabel: "Disable" }, () => toggleAuto(a.key)) : toggleAuto(a.key)}>{a.enabled ? "Disable" : "Enable"}</button>
               </div>
             ))}
           </div>
@@ -2589,7 +2591,7 @@ function AdminLandingPage({ onContinue }) {
                   <div className="admin-mock-donut" />
                   <div className="admin-mock-legend">
                     <span>● Completed 70%</span>
-                    <span>● Processing 17%</span>
+                    <span>● Preparing 17%</span>
                     <span>● Pending 8%</span>
                   </div>
                 </div>
@@ -2668,6 +2670,38 @@ function StaffLoginScreen({ onLogin }) {
   );
 }
 
+/* ------------------------------------------------------------
+   CONFIRMATION DIALOG -- one shared modal for destructive actions.
+   Call confirmAction({ title, message, confirmLabel }, onConfirm);
+   <ConfirmHost /> (mounted once at the app root) renders the dialog.
+   ------------------------------------------------------------ */
+let _confirmHandler = null;
+function confirmAction(opts, onConfirm) {
+  if (_confirmHandler) _confirmHandler({ ...opts, onConfirm });
+  else onConfirm();
+}
+function ConfirmHost() {
+  const [req, setReq] = useState(null);
+  useEffect(() => {
+    _confirmHandler = setReq;
+    return () => { if (_confirmHandler === setReq) _confirmHandler = null; };
+  }, []);
+  if (!req) return null;
+  const close = () => setReq(null);
+  return (
+    <div className="modal-backdrop" onClick={close}>
+      <div className="confirm-modal enter" role="alertdialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+        <div className="card-name" style={{ fontSize: 16, marginBottom: 6 }}>{req.title || "Are you sure?"}</div>
+        <div className="muted" style={{ marginBottom: 16 }}>{req.message || "This can't be undone in this preview."}</div>
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <button className="ghost-btn-sm" onClick={close}>Keep it</button>
+          <button className="primary-btn-sm" style={{ background: "#DC2626" }} autoFocus onClick={() => { const fn = req.onConfirm; close(); fn && fn(); }}>{req.confirmLabel || "Yes, continue"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function MedraAdminPortal({ sharedAuthed, onAuth, onLogout } = {}) {
   const [authed, setAuthedRaw] = useState(!!sharedAuthed);
   useEffect(() => { if (sharedAuthed) setAuthedRaw(true); }, [sharedAuthed]);
@@ -2703,7 +2737,7 @@ export default function MedraAdminPortal({ sharedAuthed, onAuth, onLogout } = {}
   const [active, setActive] = useState("dashboard");
   // This is the dedicated Admin dashboard -- marketplace operations only.
   // Complaints & Resolution, Live Chat, and Support Tickets live in the
-  // separate Support dashboard (arclane-support.jsx) instead.
+  // separate Support dashboard (medra-support.jsx) instead.
   const staffRole = "admin";
   const visibleNavSections = NAV_SECTIONS.map((s) => ({ ...s, items: s.items.filter((i) => i.roles.includes(staffRole)) })).filter((s) => s.items.length > 0);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -2788,6 +2822,7 @@ export default function MedraAdminPortal({ sharedAuthed, onAuth, onLogout } = {}
 
   return (
     <div className="medra-root">
+      <ConfirmHost />
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" />
       <style>{CSS}</style>
       {paletteOpen && <CommandPalette items={allSearchable} dataItems={allDataSearchable} recentKeys={recentPaletteKeys} onSelect={(key) => goTo(key, allSearchable.find((i) => i.key === key)?.sectionLabel)} onClose={() => setPaletteOpen(false)} />}
