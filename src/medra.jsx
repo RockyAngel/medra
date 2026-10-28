@@ -1037,7 +1037,7 @@ function HealthcareHomeScreen({ onNavigate, appointments, telehealthPlan }) {
     <div className="section-pad">
       <div className="panel enter" style={{ background: "linear-gradient(160deg,#ECFDF5,#fff)", border: "1px solid #A7F3D0" }}>
         <div className="panel-title">Healthcare</div>
-        <a className="ghost-btn-sm" href="tel:112" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 10, color: "#991B1B", borderColor: "#FCA5A5", background: "#FEE2E2" }}><PhoneCall size={13} /> Emergency? Call 112</a>
+        <div className="muted small" style={{ marginBottom: 10, color: "#991B1B" }}><AlertTriangle size={12} style={{ verticalAlign: "middle", marginRight: 4 }} />In an emergency, go to the nearest hospital straight away.</div>
         <div className="muted small" style={{ marginBottom: 10 }}>General guidance and provider consultations -- this is not a substitute for professional medical evaluation or an emergency service.</div>
         {telehealthPlan && <div className="muted small" style={{ marginBottom: 8 }}><ShieldCheck size={11} style={{ verticalAlign: "middle" }} /> {TELEHEALTH_PRICING.monthly[telehealthPlan.tier].label}: {telehealthPlan.visitsTotal - telehealthPlan.visitsUsed} of {telehealthPlan.visitsTotal} visits left this month.</div>}
       </div>
@@ -1128,7 +1128,7 @@ function SymptomCheckerScreen({ onEmergency, onNonEmergency, onLogCheck, history
         <div className="field" style={{ marginBottom: 14 }}>
           <span>Describe in your own words (optional)</span>
           <textarea rows={3} value={freeText} onChange={(e) => setFreeText(e.target.value)} placeholder="Anything else worth mentioning..." style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 10, padding: "8px 10px", fontSize: 12.5, fontFamily: "inherit", resize: "vertical" }} />
-          <div className="muted small" style={{ marginTop: 4, color: "#B45309" }}>If you're describing a severe or life-threatening symptom, call emergency services immediately rather than waiting on this checker.</div>
+          <div className="muted small" style={{ marginTop: 4, color: "#B45309" }}>If you're describing a severe or life-threatening symptom, go to the nearest hospital immediately rather than waiting on this checker.</div>
         </div>
         <button className="primary-btn-sm wide" disabled={selected.size === 0 && emergencySelected.size === 0 && !freeText.trim()} onClick={submit}>Continue</button>
       </div>
@@ -1142,8 +1142,8 @@ function EmergencyResultPanel({ symptoms, onFindEmergencyCare, onBack }) {
       <div className="panel enter" style={{ background: "linear-gradient(160deg,#FEE2E2,#fff)", border: "1px solid #FCA5A5" }}>
         <div className="panel-title" style={{ color: "#991B1B" }}><AlertTriangle size={16} style={{ verticalAlign: "middle", marginRight: 6 }} />Your symptoms may require immediate medical attention.</div>
         <div className="muted small" style={{ marginBottom: 10 }}>Based on: {symptoms.join(", ")}.</div>
-        <p className="muted" style={{ marginBottom: 14 }}>Please seek emergency medical care or call your local emergency number if you are in immediate danger. This checker does not book a normal appointment for these symptoms -- it is not a substitute for emergency services.</p>
-        <button className="primary-btn-sm wide" style={{ background: "#DC2626" }} onClick={onFindEmergencyCare}><PhoneCall size={14} style={{ verticalAlign: "middle", marginRight: 4 }} />Find Emergency Care</button>
+        <p className="muted" style={{ marginBottom: 14 }}>Please go to the nearest hospital now if you are in immediate danger. This checker does not book a normal appointment for these symptoms -- it is not a substitute for emergency care.</p>
+        <button className="primary-btn-sm wide" style={{ background: "#DC2626" }} onClick={onFindEmergencyCare}><MapPin size={14} style={{ verticalAlign: "middle", marginRight: 4 }} />Find the Nearest Hospital</button>
         <button className="ghost-btn-sm" style={{ marginTop: 8 }} onClick={onBack}>Back</button>
       </div>
     </div>
@@ -1174,8 +1174,7 @@ function EmergencyCareScreen() {
     <div className="section-pad">
       <div className="panel enter" style={{ background: "#FEE2E2", border: "1px solid #FCA5A5" }}>
         <div className="panel-title" style={{ color: "#991B1B" }}>Emergency Care</div>
-        <div className="muted small" style={{ marginBottom: 8 }}>If you are in immediate danger, call your local emergency number now. This list is a prototype simulation of nearby emergency facilities.</div>
-        <a className="primary-btn-sm" href="tel:112" style={{ background: "#DC2626", display: "inline-flex", alignItems: "center", gap: 6 }}><PhoneCall size={13} /> Call 112 now</a>
+        <div className="muted small" style={{ marginBottom: 8 }}>If you are in immediate danger, go to the nearest hospital now -- don't wait. This list is a prototype simulation of nearby emergency facilities.</div>
       </div>
       <div className="panel enter">
         <div className="panel-title" style={{ fontSize: 13 }}>Nearby Emergency Facilities</div>
