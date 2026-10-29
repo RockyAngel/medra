@@ -79,3 +79,17 @@ ask, can't execute · Limited = partial/redacted access · — = no access
   block currently only updates local UI state in the prototype (no backend yet) —
   see the "Prototype note" callouts already in those screens. These are the
   highest-priority rows to wire up first since they're config, not transactional data.
+
+
+## Sign-up identity requirements
+
+| Role | NIN + BVN at sign-up |
+|---|---|
+| Customer | No |
+| Rider | Yes |
+| Seller | Yes |
+| Admin | Yes (added by Super Admin in Team & Staff) |
+| Support | Yes (added by Super Admin in Team & Staff) |
+| Super Admin | No |
+
+Riders only see orders that fit their vehicle (bicycle: Small; motorbike: up to Medium; keke and car: up to Large; van: all).

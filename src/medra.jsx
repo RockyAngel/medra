@@ -176,7 +176,7 @@ const DONATION_CAUSES = [
 const PRODUCT_COMMISSION_RATE = 0.10;
 const DELIVERY_COMMISSION_NORMAL = 0.15;
 const DELIVERY_COMMISSION_PEAK = 0.10;
-const PEAK_WINDOWS = [[12, 14], [18, 21]];
+const PEAK_WINDOWS = [[6, 10], [16, 20]]; // Lagos rush hours
 function isPeakHour(date = new Date()) {
   const h = date.getHours();
   return PEAK_WINDOWS.some(([start, end]) => h >= start && h < end);
@@ -269,7 +269,7 @@ function getSellersForProduct(product) {
     const vendor = SELLER_POOL[(seed + i * 3) % SELLER_POOL.length];
     const variancePct = (((seed * (i + 7)) % 9) - 4);
     const sellerPrice = Math.round(product.price * (1 + variancePct / 100));
-    const distance = (0.4 + ((seed + i * 5) % 34) / 10).toFixed(1);
+    const distance = ((0.4 + ((seed + i * 5) % 34) / 10) * 1.60934).toFixed(1); // km
     const rating = (4.1 + ((seed + i * 2) % 9) / 10).toFixed(1);
     const etaMin = 20 + ((seed + i * 4) % 25);
     return {
@@ -279,7 +279,7 @@ function getSellersForProduct(product) {
       initials: vendor.initials,
       sellerPrice,
       customerPrice: Math.round(withMarkup(sellerPrice)),
-      distance: parseFloat(distance),
+      distance: parseFloat(distance), // kilometres
       rating: parseFloat(rating),
       etaMin,
     };
@@ -699,29 +699,29 @@ function EmptyNote({ children }) {
 
 /* ------------------------------------------------------------
    ORDER SIZE CLASSES -- the seller assigns one per order from its weight.
-   Small < 35 lb and Medium up to 60 lb pay the normal delivery fee.
-   Large (60-100 lb) pays double. Oversized (over 100 lb) pays triple, or the
+   Small (under 16 kg) and Medium (16-27 kg) pay the normal delivery fee.
+   Large (27-45 kg) pays double. Oversized (over 45 kg) pays triple, or the
    customer can arrange their own pickup instead.
    ------------------------------------------------------------ */
 const ORDER_SIZES = [
-  { key: "small", label: "Small", range: "under 35 lb", multiplier: 1, color: "#16A34A" },
-  { key: "medium", label: "Medium", range: "35-60 lb", multiplier: 1, color: "#2563EB" },
-  { key: "large", label: "Large", range: "60-100 lb", multiplier: 2, color: "#EA580C" },
-  { key: "oversized", label: "Oversized", range: "over 100 lb", multiplier: 3, color: "#DC2626" },
+  { key: "small", label: "Small", range: "under 16 kg", multiplier: 1, color: "#16A34A" },
+  { key: "medium", label: "Medium", range: "16-27 kg", multiplier: 1, color: "#2563EB" },
+  { key: "large", label: "Large", range: "27-45 kg", multiplier: 2, color: "#EA580C" },
+  { key: "oversized", label: "Oversized", range: "over 45 kg", multiplier: 3, color: "#DC2626" },
 ];
-function orderSizeForWeight(lb) {
-  const w = Number(lb);
+function orderSizeForWeight(kg) {
+  const w = Number(kg);
   if (!(w > 0)) return null;
-  if (w < 35) return ORDER_SIZES[0];
-  if (w <= 60) return ORDER_SIZES[1];
-  if (w <= 100) return ORDER_SIZES[2];
+  if (w < 16) return ORDER_SIZES[0];
+  if (w <= 27) return ORDER_SIZES[1];
+  if (w <= 45) return ORDER_SIZES[2];
   return ORDER_SIZES[3];
 }
 const orderSizeByKey = (k) => ORDER_SIZES.find((s) => s.key === k) || null;
-function SizeBadge({ sizeKey, weightLb }) {
+function SizeBadge({ sizeKey, weightKg }) {
   const sz = orderSizeByKey(sizeKey);
   if (!sz) return <span className="status-pill" style={{ background: "#F1F5F9", color: "#64748B" }}>Size not set</span>;
-  return <span className="status-pill" style={{ background: sz.color + "1A", color: sz.color, fontWeight: 700 }}>{sz.label} order{weightLb ? ` -- ${weightLb} lb` : ""}{sz.multiplier > 1 ? ` -- delivery x${sz.multiplier}` : ""}</span>;
+  return <span className="status-pill" style={{ background: sz.color + "1A", color: sz.color, fontWeight: 700 }}>{sz.label} order{weightKg ? ` -- ${weightKg} kg` : ""}{sz.multiplier > 1 ? ` -- delivery x${sz.multiplier}` : ""}</span>;
 }
 
 // Canonical order statuses -- one vocabulary across every app. Legacy/alias
@@ -1072,10 +1072,57 @@ const EMERGENCY_TEXT_KEYWORDS = [
   "suicide", "end my life", "hurt myself", "self harm", "self-harm", "take my own life",
   "convulsion", "turning blue", "blue lips", "diabetic coma", "insulin overdose",
 ];
+// Pidgin, Yoruba, Hausa and Igbo phrases. Written without tone marks or dots --
+// the text is stripped of them before matching, so "ọbara", "obara" and "Obara"
+// all match. Best-effort list: have native speakers review it before launch.
+const EMERGENCY_LOCAL_KEYWORDS = [
+  // Nigerian Pidgin
+  "i no fit breathe", "i no fit breath", "no fit breathe", "e no dey breathe", "no dey breathe", "no dey breath",
+  "chest dey pain", "chest dey hurt", "my chest dey pain me", "my chest dey tight", "heart dey pain me",
+  "i dey faint", "i don faint", "e don faint", "he don faint", "she don faint", "i don collapse", "e don collapse", "e don pass out",
+  "blood dey comot", "blood dey flow", "blood no dey stop", "e dey bleed well", "dey bleed well well", "blood dey run",
+  "dey vomit blood", "dey cough blood", "dey shit blood", "shit blood", "dey pass blood",
+  "i wan die", "i wan kill myself", "i wan end my life", "i no wan live", "make i die", "i wan kpai",
+  "dem don shoot", "dem shoot am", "dem stab am", "dem don stab",
+  "pikin no dey breathe", "baby no dey breathe", "belle dey pain and blood", "pregnant and blood dey",
+  "snake bite", "snake don bite", "i don drink poison", "e drink poison", 
+  "head dey turn me and i no fit see", "i no fit talk", "e no fit talk", "mouth don twist",
+  // Yoruba
+  "mi o le simi", "n ko le simi", "n o le simi", "emi ko gba", "emi mi ko gba", "ko le simi",
+  "aya mi n dun", "aya mi ndun", "aya n dun mi", "okan mi n dun", "aya dun mi gidigidi",
+  "mo daku", "o ti daku", "o daku", "mo fe ku", "mo fe pa ara mi", "mo fe pa ra mi", "mo fe gba emi ara mi",
+  "eje n jade", "eje ntu", "eje po", "eje ko duro", "eje n san", "mo bi eje", "o bi eje", "iko eje", "mo ko eje",
+  "ijagba", "won yin ni ibon", "won gun un", "ejo bu mi je", "ejo ge mi", "mo mu majele", "o mu majele",
+  "ko le soro", "enu re ya", "ori mi n lu gidigidi",
+  // Hausa
+  "ba zan iya numfashi ba", "bana iya numfashi", "ba na iya numfashi", "numfashi ya tsaya", "numfashinsa ya tsaya", "yana wahalar numfashi", "wahalar numfashi",
+  "ciwon kirji", "kirjina yana ciwo", "kirjina na ciwo", "zuciyata na ciwo", "zuciyata tana bugawa sosai",
+  "ya suma", "na suma", "ta suma", "ya fadi ya suma", "ya fadi kasa", "ta fadi kasa",
+  "zubar da jini", "jini yana zuba", "jini na zuba", "jini ba ya tsayawa", "jini bai tsaya ba", "amai da jini", "tari da jini", "bayan gida da jini",
+  "ina son mutuwa", "ina so in mutu", "ina so na mutu", "zan kashe kaina", "kashe kaina", "ina so in kashe kaina",
+  "farfadiya", "ya fara kyarma", "an harbe shi", "an harbe ta", "an caka masa wuka", "an caka mata wuka", "maciji ya cije", "ya sha guba", "ta sha guba", "ba ya magana",
+  // Igbo
+  "enweghi m ike iku ume", "enweghi ike iku ume", "anaghi m eku ume", "adighi m ume", "o naghi eku ume", "onweghi ume", "ume adighi",
+  "obi m na egbu m", "obi na ewe m", "obi na egbu m", "obi m na ewe m nke ukwuu", 
+  "o daala", "daa na ala", "adaala m", "ahu na agba m", 
+  "obara na aso", "obara na ebute", "obara adighi akwusi", "obara anaghi akwusi", "agbo obara", "ukwara obara", "m na agbo obara",
+  "achoro m inwu", "m choro inwu", "achoro m ikpu onwe m", "igbu onwe m", "m ga egbu onwe m", "achoro m igbu onwe m",
+  "o nwere ntu", "ntu na eme ya", "ha gbagburu ya", "ha gbara ya egbe", "agbara ya egbe", "agha ya na mma", "agwo loro ya", "o nuru nsi", "m nuru nsi",
+  "enweghi m ike ikwu okwu", "onu ya gbagwoo",
+];
+function normaliseForEmergency(text) {
+  return String(text)
+    .toLowerCase()
+    .replace(/[\u2018\u2019`]/g, "'")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[']/g, "")
+    .replace(/[-_]/g, " ")
+    .replace(/\s+/g, " ");
+}
+const EMERGENCY_NORMALISED = [...EMERGENCY_TEXT_KEYWORDS, ...EMERGENCY_LOCAL_KEYWORDS].map(normaliseForEmergency);
 function textHasEmergencyKeyword(text) {
-  // normalise curly apostrophes and extra whitespace so "can’t  breathe" still matches
-  const lower = text.toLowerCase().replace(/[\u2018\u2019]/g, "'").replace(/\s+/g, " ");
-  return EMERGENCY_TEXT_KEYWORDS.some((k) => lower.includes(k));
+  const lower = normaliseForEmergency(text);
+  return EMERGENCY_NORMALISED.some((k) => lower.includes(k));
 }
 
 function SymptomCheckerScreen({ onEmergency, onNonEmergency, onLogCheck, history }) {
@@ -1127,7 +1174,7 @@ function SymptomCheckerScreen({ onEmergency, onNonEmergency, onLogCheck, history
         </div>
         <div className="field" style={{ marginBottom: 14 }}>
           <span>Describe in your own words (optional)</span>
-          <textarea rows={3} value={freeText} onChange={(e) => setFreeText(e.target.value)} placeholder="Anything else worth mentioning..." style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 10, padding: "8px 10px", fontSize: 12.5, fontFamily: "inherit", resize: "vertical" }} />
+          <textarea rows={3} value={freeText} onChange={(e) => setFreeText(e.target.value)} placeholder="Anything else worth mentioning... You can write in English, Pidgin, Yoruba, Hausa or Igbo." style={{ width: "100%", border: "1px solid var(--border)", borderRadius: 10, padding: "8px 10px", fontSize: 12.5, fontFamily: "inherit", resize: "vertical" }} />
           <div className="muted small" style={{ marginTop: 4, color: "#B45309" }}>If you're describing a severe or life-threatening symptom, go to the nearest hospital immediately rather than waiting on this checker.</div>
         </div>
         <button className="primary-btn-sm wide" disabled={selected.size === 0 && emergencySelected.size === 0 && !freeText.trim()} onClick={submit}>Continue</button>
@@ -2365,7 +2412,7 @@ function ProductModal({ product, onClose, onAdd, onOpenProduct, onOpenStore, uni
           )}
           {product.weightKg && (
             <div className="muted small" style={{ marginBottom: 8 }}>
-              <Scale size={11} style={{ verticalAlign: "middle" }} /> {unitPref === "lb" ? `${(product.weightKg * 2.20462).toFixed(2)} lb` : `${product.weightKg} kg`}
+              <Scale size={11} style={{ verticalAlign: "middle" }} /> {`${product.weightKg} kg`}
             </div>
           )}
           {(product.category === "groceries" || product.category === "pharmacies") && (
@@ -2450,7 +2497,7 @@ function ProductModal({ product, onClose, onAdd, onOpenProduct, onOpenStore, uni
                   <tr key={s.id}>
                     <td className="card-name" style={{ fontSize: 12.5 }}>{s.vendor}{i === 0 && <span className="status-pill done" style={{ marginLeft: 6 }}>Best price</span>}</td>
                     <td className="mono">{naira(s.customerPrice)}</td>
-                    <td className="muted small">{s.distance} mi</td>
+                    <td className="muted small">{s.distance} km</td>
                     <td className="muted small">{s.rating} <Star size={10} fill="#F59E0B" color="#F59E0B" style={{ verticalAlign: "middle" }} /></td>
                     <td className="muted small">~{s.etaMin} min</td>
                     <td><button className="prod-add" onClick={() => onAdd(s)}><Plus size={14} /></button></td>
@@ -2469,7 +2516,7 @@ function ProductModal({ product, onClose, onAdd, onOpenProduct, onOpenStore, uni
                   <div className="driver-avatar sm store">{s.initials}</div>
                   <div className="ti-mid">
                     <div className="card-name">{s.vendor} {i === 0 && <span className="status-pill done">Best price</span>}</div>
-                    <div className="muted small"><Stars value={s.rating} size={10} /> {s.rating} -- {s.distance} mi -- ~{s.etaMin} min</div>
+                    <div className="muted small"><Stars value={s.rating} size={10} /> {s.rating} -- {s.distance} km -- ~{s.etaMin} min</div>
                     {i === 0 && priceGapPct >= 3 && <div className="why-seller-note">{priceGapPct}% cheaper than {next.vendor}{isFastest ? " and the fastest option here" : ""}</div>}
                     <button className="link-btn" style={{ padding: 0 }} onClick={() => onOpenStore(s.vendor)}>View store</button>
                   </div>
@@ -3098,11 +3145,11 @@ function OrderSizePanel({ order, onOversizeChoice }) {
   if (!d || !d.sizeClass) return null;
   return (
     <div className="panel enter" style={{ borderLeft: `4px solid ${orderSizeByKey(d.sizeClass)?.color || "#7C3AED"}` }}>
-      <div className="panel-title-row"><div className="panel-title" style={{ fontSize: 13 }}>Your order size</div><SizeBadge sizeKey={d.sizeClass} weightLb={d.weightLb} /></div>
-      {d.sizeClass === "large" && <div className="muted small">Large orders (60-100 lb) pay double delivery. {naira(d.sizeSurcharge || 0)} was added to your total.</div>}
+      <div className="panel-title-row"><div className="panel-title" style={{ fontSize: 13 }}>Your order size</div><SizeBadge sizeKey={d.sizeClass} weightKg={d.weightKg} /></div>
+      {d.sizeClass === "large" && <div className="muted small">Large orders (27-45 kg) pay double delivery. {naira(d.sizeSurcharge || 0)} was added to your total.</div>}
       {d.sizeClass === "oversized" && d.oversizeChoice === "pending" && (
         <div>
-          <div className="muted small" style={{ marginBottom: 8 }}>The seller weighed your order at {d.weightLb} lb -- over our 100 lb delivery limit. Choose how you want to receive it:</div>
+          <div className="muted small" style={{ marginBottom: 8 }}>The seller weighed your order at {d.weightKg} kg -- over our 45 kg delivery limit. Choose how you want to receive it:</div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button className="primary-btn-sm" onClick={() => onOversizeChoice && onOversizeChoice(order.id, "pay_triple")}>Deliver it -- pay triple delivery (+{naira(d.sizeSurcharge || 0)})</button>
             <button className="ghost-btn-sm" onClick={() => onOversizeChoice && onOversizeChoice(order.id, "self_pickup")}>I'll arrange my own pickup</button>
@@ -4977,7 +5024,7 @@ const COMMUNITY_SEED = {
     { author: "Tobi J.", role: "Customer", time: "9:02 AM", text: "The points redemption on my last order felt really generous, nice touch." },
   ],
   all: [
-    { author: "Medra Team", role: "Official", time: "9:05 AM", text: "Reminder: peak delivery hours today run 12-2pm and 6-9pm as usual." },
+    { author: "Medra Team", role: "Official", time: "9:05 AM", text: "Reminder: peak delivery hours today run 6-10am and 4-8pm as usual." },
     { author: "Northside Espresso Bar", role: "Seller", time: "8:35 AM", text: "Thanks for the shoutout, Blessing! Fresh batch goes out at 9." },
     { author: "John Rider", role: "Rider", time: "9:00 AM", text: "Roads are clear across Lekki this morning, should be fast deliveries today." },
     { author: "Priya M.", role: "Admin", time: "9:10 AM", text: "Good morning all! Let us know here if anything needs our attention." },
@@ -6670,10 +6717,9 @@ function SettingsScreen({ onOpenThemes, showMyPhoto, setShowMyPhoto, onReplayTou
           <div className="flag-row"><Clock size={15} /><div className="ti-mid"><div className="card-name">Switch automatically by time of day</div><div className="muted">Dark from 7pm to 7am, light the rest of the day -- overrides the manual toggle above</div></div>
             <button className={`toggle-mini ${darkModeAuto ? "on" : ""}`} onClick={() => setDarkModeAuto((a) => !a)}><span /></button>
           </div>
-          <div className="flag-row"><Scale size={15} /><div className="ti-mid"><div className="card-name">Measurement units</div><div className="muted">Shown on grocery item weights and volumes</div></div>
+          <div className="flag-row"><Scale size={15} /><div className="ti-mid"><div className="card-name">Measurement units</div><div className="muted">Medra uses kilograms and kilometres. Cooking temperatures stay in °F.</div></div>
             <div style={{ display: "flex", gap: 4 }}>
-              <button className={`ghost-btn-sm ${unitPref === "kg" ? "active" : ""}`} style={unitPref === "kg" ? { background: "#F3EEFF", border: "1px solid var(--purple)" } : undefined} onClick={() => setUnitPref("kg")}>kg</button>
-              <button className={`ghost-btn-sm ${unitPref === "lb" ? "active" : ""}`} style={unitPref === "lb" ? { background: "#F3EEFF", border: "1px solid var(--purple)" } : undefined} onClick={() => setUnitPref("lb")}>lb</button>
+              <button className={`ghost-btn-sm ${unitPref === "kg" ? "active" : ""}`} style={unitPref === "kg" ? { background: "#F3EEFF", border: "1px solid var(--purple)" } : undefined} onClick={() => setUnitPref("kg")}>kg / km</button>
             </div>
           </div>
           <div className="flag-row"><Camera size={15} /><div className="ti-mid"><div className="card-name">Show my photo on my birthday</div><div className="muted">Let other customers see your photo when it's your turn to be the celebrant</div></div>
@@ -7408,7 +7454,7 @@ function GuestShopShell({ onLogin }) {
           onAdd={requireLogin}
           onOpenProduct={setModalProduct}
           onOpenStore={requireLogin}
-          unitPref="imperial"
+          unitPref="kg"
           myReviews={{}}
           onSubmitReview={requireLogin}
           myQuestionsByProduct={{}}
@@ -8319,7 +8365,7 @@ export default function MedraApp({ sharedAuthed, onAuth, onLogout, sharedOrderSt
     setCart((c) => {
       const ex = c.find((x) => x.key === listing.id);
       if (ex) return c.map((x) => (x.key === listing.id ? { ...x, qty: x.qty + qty } : x));
-      return [...c, { key: listing.id, productId: listing.productId, sellerName: listing.vendor, sellerPrice: listing.sellerPrice, distanceKm: listing.distance * 1.60934, qty }];
+      return [...c, { key: listing.id, productId: listing.productId, sellerName: listing.vendor, sellerPrice: listing.sellerPrice, distanceKm: listing.distance, qty }];
     });
     setCartUpdatedAt(Date.now());
     setModalProduct(null);
@@ -8502,7 +8548,7 @@ export default function MedraApp({ sharedAuthed, onAuth, onLogout, sharedOrderSt
     setReorderConfirm(true);
     setActive("checkout");
   };
-  // Oversized (over 100 lb) orders: the customer either pays triple delivery or
+  // Oversized (over 45 kg) orders: the customer either pays triple delivery or
   // arranges their own pickup. Once chosen, the order moves on if every seller
   // has already confirmed it.
   const chooseOversize = (id, choice) => {

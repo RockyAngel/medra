@@ -21,7 +21,7 @@ const money = (n) => `₦${Math.round(n).toLocaleString("en-NG")}`;
    PLATFORM ECONOMICS -- shared with the customer/seller/rider apps.
    Product commission: 10% added on top of every seller-listed price.
    Delivery commission: 15% of the delivery fee at normal hours,
-   10% during peak hours (12-2pm and 6-9pm) -- rider keeps the rest.
+   10% during peak hours (6-10am and 4-8pm) -- rider keeps the rest.
    ------------------------------------------------------------ */
 const PRODUCT_COMMISSION_RATE = 0.10;
 const DELIVERY_COMMISSION_NORMAL = 0.15;
@@ -1997,7 +1997,7 @@ const COMMUNITY_SEED = {
     { author: "Jordan B.", role: "Support", time: "9:20 AM", text: "The View-As audit log has been really handy for tracing support cases." },
   ],
   all: [
-    { author: "Medra Team", role: "Official", time: "9:00 AM", text: "Reminder: peak delivery hours today run 12-2pm and 6-9pm as usual." },
+    { author: "Medra Team", role: "Official", time: "9:00 AM", text: "Reminder: peak delivery hours today run 6-10am and 4-8pm as usual." },
     { author: "Northside Espresso Bar", role: "Seller", time: "8:25 AM", text: "Good morning everyone! Hope it's a great day for everyone on the platform." },
     { author: "John Rider", role: "Rider", time: "8:40 AM", text: "Roads are clear across Lekki this morning, should be fast deliveries today." },
     { author: "Amara O.", role: "Customer", time: "9:10 AM", text: "Just wanted to say support sorted my issue out really fast, thank you!" },

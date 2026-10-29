@@ -55,7 +55,7 @@ const KPIS = [
 const INVENTORY = [
   { id: "i1", name: "Cold Brew Concentrate", price: 1299, stock: 24, category: "Drinks", lowStockAt: 5, supplier: "Lagos Roasters Co.", supplierContact: "orders@lagosroasters.ng" },
   { id: "i2", name: "Sourdough Bread Loaf", price: 599, stock: 6, category: "Bakery", lowStockAt: 8, supplier: "Daily Bread Wholesale", supplierContact: "supply@dailybread.ng" },
-  { id: "i3", name: "House Blend Beans (12oz)", price: 1450, stock: 30, category: "Drinks", lowStockAt: 5, supplier: "Lagos Roasters Co.", supplierContact: "orders@lagosroasters.ng" },
+  { id: "i3", name: "House Blend Beans (340g)", price: 1450, stock: 30, category: "Drinks", lowStockAt: 5, supplier: "Lagos Roasters Co.", supplierContact: "orders@lagosroasters.ng" },
   { id: "i4", name: "Almond Croissant", price: 425, stock: 0, category: "Bakery", lowStockAt: 5, supplier: "Daily Bread Wholesale", supplierContact: "supply@dailybread.ng" },
   { id: "i5", name: "Oat Milk Latte Kit", price: 975, stock: 15, category: "Drinks", lowStockAt: 5, supplier: "Fresh Dairy Alternatives", supplierContact: "hello@freshdairyalt.ng" },
   { id: "i6", name: "Matcha Powder Tin", price: 2100, stock: 18, category: "Drinks", lowStockAt: 5, supplier: "Lagos Roasters Co.", supplierContact: "orders@lagosroasters.ng" },
@@ -121,7 +121,7 @@ const PAYOUTS = [
   ] },
 ];
 
-const INCOMING_ORDER = { id: "O5581", customer: "Jordan B.", items: [{ name: "Cold Brew Concentrate", qty: 2 }, { name: "Almond Croissant", qty: 1 }], total: 3023, distance: "1.2 mi" };
+const INCOMING_ORDER = { id: "O5581", customer: "Jordan B.", items: [{ name: "Cold Brew Concentrate", qty: 2 }, { name: "Almond Croissant", qty: 1 }], total: 3023, distance: "1.9 km" };
 
 /* ============================================================
    NAV
@@ -179,29 +179,29 @@ function KpiCard({ k, comparePeriod }) {
 
 /* ------------------------------------------------------------
    ORDER SIZE CLASSES -- the seller assigns one per order from its weight.
-   Small < 35 lb and Medium up to 60 lb pay the normal delivery fee.
-   Large (60-100 lb) pays double. Oversized (over 100 lb) pays triple, or the
+   Small (under 16 kg) and Medium (16-27 kg) pay the normal delivery fee.
+   Large (27-45 kg) pays double. Oversized (over 45 kg) pays triple, or the
    customer can arrange their own pickup instead.
    ------------------------------------------------------------ */
 const ORDER_SIZES = [
-  { key: "small", label: "Small", range: "under 35 lb", multiplier: 1, color: "#16A34A" },
-  { key: "medium", label: "Medium", range: "35-60 lb", multiplier: 1, color: "#2563EB" },
-  { key: "large", label: "Large", range: "60-100 lb", multiplier: 2, color: "#EA580C" },
-  { key: "oversized", label: "Oversized", range: "over 100 lb", multiplier: 3, color: "#DC2626" },
+  { key: "small", label: "Small", range: "under 16 kg", multiplier: 1, color: "#16A34A" },
+  { key: "medium", label: "Medium", range: "16-27 kg", multiplier: 1, color: "#2563EB" },
+  { key: "large", label: "Large", range: "27-45 kg", multiplier: 2, color: "#EA580C" },
+  { key: "oversized", label: "Oversized", range: "over 45 kg", multiplier: 3, color: "#DC2626" },
 ];
-function orderSizeForWeight(lb) {
-  const w = Number(lb);
+function orderSizeForWeight(kg) {
+  const w = Number(kg);
   if (!(w > 0)) return null;
-  if (w < 35) return ORDER_SIZES[0];
-  if (w <= 60) return ORDER_SIZES[1];
-  if (w <= 100) return ORDER_SIZES[2];
+  if (w < 16) return ORDER_SIZES[0];
+  if (w <= 27) return ORDER_SIZES[1];
+  if (w <= 45) return ORDER_SIZES[2];
   return ORDER_SIZES[3];
 }
 const orderSizeByKey = (k) => ORDER_SIZES.find((s) => s.key === k) || null;
-function SizeBadge({ sizeKey, weightLb }) {
+function SizeBadge({ sizeKey, weightKg }) {
   const sz = orderSizeByKey(sizeKey);
   if (!sz) return <span className="status-pill" style={{ background: "#F1F5F9", color: "#64748B" }}>Size not set</span>;
-  return <span className="status-pill" style={{ background: sz.color + "1A", color: sz.color, fontWeight: 700 }}>{sz.label} order{weightLb ? ` -- ${weightLb} lb` : ""}{sz.multiplier > 1 ? ` -- delivery x${sz.multiplier}` : ""}</span>;
+  return <span className="status-pill" style={{ background: sz.color + "1A", color: sz.color, fontWeight: 700 }}>{sz.label} order{weightKg ? ` -- ${weightKg} kg` : ""}{sz.multiplier > 1 ? ` -- delivery x${sz.multiplier}` : ""}</span>;
 }
 
 // Canonical order statuses -- one vocabulary across every app. Legacy/alias
@@ -509,7 +509,7 @@ function OrdersListScreen({ orders }) {
   const setWeight = (id, value) => {
     const w = value === "" ? "" : Math.max(0, Number(value));
     const sz = orderSizeForWeight(w);
-    setLocalOrders((os) => os.map((o) => (o.id === id ? { ...o, weightLb: w, sizeKey: sz ? sz.key : null } : o)));
+    setLocalOrders((os) => os.map((o) => (o.id === id ? { ...o, weightKg: w, sizeKey: sz ? sz.key : null } : o)));
     setSizeError("");
   };
   const bulkMark = (status) => {
@@ -538,10 +538,10 @@ function OrdersListScreen({ orders }) {
           )}
         </div>
         {sizeError && <div className="muted small" style={{ color: "#DC2626", marginBottom: 8 }}><AlertTriangle size={12} style={{ verticalAlign: "middle" }} /> {sizeError}</div>}
-        <div className="muted small" style={{ marginBottom: 8 }}>Size guide -- {ORDER_SIZES.map((z) => `${z.label}: ${z.range}${z.multiplier > 1 ? ` (delivery x${z.multiplier})` : ""}`).join(" | ")}. Over 100 lb the customer can arrange their own pickup instead.</div>
+        <div className="muted small" style={{ marginBottom: 8 }}>Size guide -- {ORDER_SIZES.map((z) => `${z.label}: ${z.range}${z.multiplier > 1 ? ` (delivery x${z.multiplier})` : ""}`).join(" | ")}. Over 45 kg the customer can arrange their own pickup instead.</div>
         <table className="admin-table">
           <thead><tr><th><input type="checkbox" checked={selected.size === localOrders.length && localOrders.length > 0} onChange={toggleAll} /></th><th>Order</th><th>Customer</th><th>Time</th><th>Total</th><th>Size (assign weight)</th><th>Status</th></tr></thead>
-          <tbody>{localOrders.map((o) => <tr key={o.id}><td><input type="checkbox" checked={selected.has(o.id)} onChange={() => toggle(o.id)} /></td><td className="mono">#{o.id}</td><td>{o.customer}</td><td className="muted">{o.time}</td><td className="mono">{money(o.total)}</td><td><div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}><input type="number" min="1" placeholder="lb" aria-label={`Weight in pounds for order ${o.id}`} value={o.weightLb || ""} onChange={(e) => setWeight(o.id, e.target.value)} style={{ width: 64, padding: "4px 6px", border: "1px solid var(--border)", borderRadius: 8 }} /><SizeBadge sizeKey={o.sizeKey} weightLb={null} /></div></td><td><StatusPill status={o.status} /></td></tr>)}</tbody>
+          <tbody>{localOrders.map((o) => <tr key={o.id}><td><input type="checkbox" checked={selected.has(o.id)} onChange={() => toggle(o.id)} /></td><td className="mono">#{o.id}</td><td>{o.customer}</td><td className="muted">{o.time}</td><td className="mono">{money(o.total)}</td><td><div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}><input type="number" min="1" placeholder="kg" aria-label={`Weight in kilograms for order ${o.id}`} value={o.weightKg || ""} onChange={(e) => setWeight(o.id, e.target.value)} style={{ width: 64, padding: "4px 6px", border: "1px solid var(--border)", borderRadius: 8 }} /><SizeBadge sizeKey={o.sizeKey} weightKg={null} /></div></td><td><StatusPill status={o.status} /></td></tr>)}</tbody>
         </table>
       </div>
     </div>
@@ -986,8 +986,8 @@ function OrderConfirmationsSection({ sharedOrderStore }) {
     const baseFee = order.baseDeliveryFee ?? order.deliveryFee ?? 0;
     const sizePatch = order.sizeClass ? {} : (
       sz.key === "oversized"
-        ? { weightLb: Number(weights[order.id]), sizeClass: sz.key, baseDeliveryFee: baseFee, sizeSurcharge: baseFee * 2, oversizeChoice: "pending" }
-        : { weightLb: Number(weights[order.id]), sizeClass: sz.key, baseDeliveryFee: baseFee, sizeSurcharge: baseFee * (sz.multiplier - 1), deliveryFee: baseFee * sz.multiplier, total: (order.total || 0) + baseFee * (sz.multiplier - 1) }
+        ? { weightKg: Number(weights[order.id]), sizeClass: sz.key, baseDeliveryFee: baseFee, sizeSurcharge: baseFee * 2, oversizeChoice: "pending" }
+        : { weightKg: Number(weights[order.id]), sizeClass: sz.key, baseDeliveryFee: baseFee, sizeSurcharge: baseFee * (sz.multiplier - 1), deliveryFee: baseFee * sz.multiplier, total: (order.total || 0) + baseFee * (sz.multiplier - 1) }
     );
     const oversizeBlocked = sz.key === "oversized" && !["pay_triple", "self_pickup"].includes(order.oversizeChoice);
     sharedOrderStore.updateOrder(order.id, {
@@ -1033,11 +1033,11 @@ function OrderConfirmationsSection({ sharedOrderStore }) {
                     return (
                       <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
                         {o.sizeClass ? (
-                          <div className="muted small">Size assigned: <SizeBadge sizeKey={o.sizeClass} weightLb={o.weightLb} /></div>
+                          <div className="muted small">Size assigned: <SizeBadge sizeKey={o.sizeClass} weightKg={o.weightKg} /></div>
                         ) : (
-                          <label className="field" style={{ marginBottom: 0 }}><span>Order weight (lb) -- assigns Small / Medium / Large / Oversized</span><input type="number" min="1" value={weights[o.id] || ""} onChange={(e) => setWeights((w) => ({ ...w, [o.id]: e.target.value }))} placeholder="e.g. 42" /></label>
+                          <label className="field" style={{ marginBottom: 0 }}><span>Order weight (kg) -- assigns Small / Medium / Large / Oversized</span><input type="number" min="1" value={weights[o.id] || ""} onChange={(e) => setWeights((w) => ({ ...w, [o.id]: e.target.value }))} placeholder="e.g. 20" /></label>
                         )}
-                        {!o.sizeClass && sz && <div className="muted small"><SizeBadge sizeKey={sz.key} weightLb={weights[o.id]} />{base > 0 && sz.multiplier > 1 ? ` -- delivery fee ${money(base)} becomes ${money(base * sz.multiplier)}${sz.key === "oversized" ? " if the customer pays, or they arrange their own pickup" : ""}` : ""}</div>}
+                        {!o.sizeClass && sz && <div className="muted small"><SizeBadge sizeKey={sz.key} weightKg={weights[o.id]} />{base > 0 && sz.multiplier > 1 ? ` -- delivery fee ${money(base)} becomes ${money(base * sz.multiplier)}${sz.key === "oversized" ? " if the customer pays, or they arrange their own pickup" : ""}` : ""}</div>}
                         {o.oversizeChoice === "pending" && <div className="muted small" style={{ color: "#B45309" }}><Clock size={11} style={{ verticalAlign: "middle" }} /> Waiting for the customer to choose: arrange their own pickup or pay triple delivery.</div>}
                         {o.oversizeChoice === "self_pickup" && <div className="muted small" style={{ color: "#16A34A" }}>Customer will collect this order themselves -- no rider needed.</div>}
                         {o.oversizeChoice === "pay_triple" && <div className="muted small" style={{ color: "#16A34A" }}>Customer chose delivery at triple the fee.</div>}
@@ -1065,7 +1065,7 @@ function OrderConfirmationsSection({ sharedOrderStore }) {
             <div className="list-col">
               {pickups.map((o) => (
                 <div key={o.id} className="pending-row">
-                  <div className="ti-mid"><div className="card-name">Order #{o.id} -- {o.customerName}</div><div className="muted small"><SizeBadge sizeKey={o.sizeClass} weightLb={o.weightLb} /></div></div>
+                  <div className="ti-mid"><div className="card-name">Order #{o.id} -- {o.customerName}</div><div className="muted small"><SizeBadge sizeKey={o.sizeClass} weightKg={o.weightKg} /></div></div>
                   <button className="primary-btn-sm" onClick={() => sharedOrderStore.updateOrder(o.id, { stage: "delivered", riderConfirmedDelivered: true, customerConfirmedDelivered: true, deliveredAt: Date.now(), collectedByCustomer: true })}>Mark collected</button>
                 </div>
               ))}
@@ -1656,7 +1656,7 @@ const COMMUNITY_SEED = {
     { author: "Ceramic & Co.", role: "Seller", time: "9:20 AM", text: "Bulk upload for products saved me hours today, great feature." },
   ],
   all: [
-    { author: "Medra Team", role: "Official", time: "9:05 AM", text: "Reminder: peak delivery hours today run 12-2pm and 6-9pm as usual." },
+    { author: "Medra Team", role: "Official", time: "9:05 AM", text: "Reminder: peak delivery hours today run 6-10am and 4-8pm as usual." },
     { author: "John Rider", role: "Rider", time: "8:55 AM", text: "Roads are clear across Lekki this morning, should be fast deliveries today." },
     { author: "Amara O.", role: "Customer", time: "9:00 AM", text: "Love being able to compare sellers side by side on one product!" },
     { author: "Priya M.", role: "Admin", time: "9:10 AM", text: "Good morning all! Let us know here if anything needs our attention." },
@@ -2263,7 +2263,7 @@ function StoreSettingsScreen({ onNavigate }) {
           <div className="flag-row"><div className="ti-mid"><div className="card-name">Store name</div><div className="muted">{STORE.name}</div></div></div>
           <div className="flag-row"><div className="ti-mid"><div className="card-name">Category</div><div className="muted">{STORE.category}</div></div></div>
           <div className="flag-row"><div className="ti-mid"><div className="card-name">Regular hours</div><div className="muted">7:00 AM - 8:00 PM</div></div></div>
-          <div className="flag-row"><div className="ti-mid"><div className="card-name">Delivery radius</div><div className="muted">8 miles</div></div></div>
+          <div className="flag-row"><div className="ti-mid"><div className="card-name">Delivery radius</div><div className="muted">13 km</div></div></div>
         </div>
       </div>
       <div className="panel enter">
@@ -2605,10 +2605,34 @@ function SellerLandingPage({ onStart, onSignIn }) {
   );
 }
 
+/* NIN + BVN capture for sign-up (Rider, Seller, Admin, Support -- not Customers or Super Admin).
+   Prototype: format check only (11 digits each). Real verification needs an identity provider. */
+const onlyDigits = (v) => String(v || "").replace(/\D/g, "").slice(0, 11);
+const idFieldsValid = (nin, bvn) => /^\d{11}$/.test(nin) && /^\d{11}$/.test(bvn);
+function IdFields({ nin, setNin, bvn, setBvn }) {
+  const bad = (v) => v.length > 0 && v.length < 11;
+  return (
+    <>
+      <label className="field"><span>NIN (National Identification Number)</span>
+        <input type="text" inputMode="numeric" autoComplete="off" value={nin} onChange={(e) => setNin(onlyDigits(e.target.value))} placeholder="11 digits" maxLength={11} required aria-invalid={bad(nin)} />
+        {bad(nin) && <span className="muted small" style={{ color: "#DC2626" }}>NIN must be 11 digits</span>}
+      </label>
+      <label className="field"><span>BVN (Bank Verification Number)</span>
+        <input type="text" inputMode="numeric" autoComplete="off" value={bvn} onChange={(e) => setBvn(onlyDigits(e.target.value))} placeholder="11 digits" maxLength={11} required aria-invalid={bad(bvn)} />
+        {bad(bvn) && <span className="muted small" style={{ color: "#DC2626" }}>BVN must be 11 digits</span>}
+      </label>
+      <div className="muted small">We keep only the last 4 digits visible after sign-up. Preview build: numbers are format-checked only, not verified against NIMC or your bank.</div>
+    </>
+  );
+}
+
 function LoginScreen({ onLogin }) {
   const [mode, setMode] = useState("signin");
   const [loading, setLoading] = useState(false);
-  const submit = (e) => { e.preventDefault(); setLoading(true); setTimeout(() => { setLoading(false); onLogin(); }, 700); };
+  const [nin, setNin] = useState("");
+  const [bvn, setBvn] = useState("");
+  const idsOk = mode !== "signup" || idFieldsValid(nin, bvn);
+  const submit = (e) => { e.preventDefault(); if (!idsOk) return; setLoading(true); setTimeout(() => { setLoading(false); onLogin(); }, 700); };
   return (
     <div className="medra-root">
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" />
@@ -2617,7 +2641,7 @@ function LoginScreen({ onLogin }) {
         <div className="staff-login-card enter">
           <Logo />
           <div className="staff-login-title" style={{ marginTop: 18 }}>{mode === "signin" ? "Welcome back" : "Create your store"}</div>
-          <div className="muted">{mode === "signin" ? "Sign in to manage your storefront" : "New storefronts are reviewed before going live"}</div>
+          <div className="muted">{mode === "signin" ? "Sign in to manage your storefront" : "New storefronts are reviewed before going live. NIN and BVN are required"}</div>
           <div className="login-tabs">
             <button type="button" className={`login-tab ${mode === "signin" ? "active" : ""}`} onClick={() => setMode("signin")}>Sign in</button>
             <button type="button" className={`login-tab ${mode === "signup" ? "active" : ""}`} onClick={() => setMode("signup")}>Apply to sell</button>
@@ -2627,7 +2651,8 @@ function LoginScreen({ onLogin }) {
             {mode === "signup" && <label className="field"><span>Business name</span><input type="text" defaultValue="Northside Espresso Bar" placeholder="Northside Espresso Bar" required /></label>}
             <label className="field"><span>Email</span><input type="email" defaultValue="demo@medra.com" placeholder="you@example.com" required /></label>
             <label className="field"><span>Password</span><input type="password" defaultValue="demo1234" placeholder="********" required /></label>
-            <button className={`primary-btn wide ${loading ? "loading" : ""}`} type="submit" disabled={loading}>{loading ? <span className="spinner" /> : mode === "signin" ? "Sign in" : "Submit application"}</button>
+            {mode === "signup" && <IdFields nin={nin} setNin={setNin} bvn={bvn} setBvn={setBvn} />}
+            <button className={`primary-btn wide ${loading ? "loading" : ""}`} type="submit" disabled={loading || !idsOk}>{loading ? <span className="spinner" /> : mode === "signin" ? "Sign in" : "Submit application"}</button>
           </form>
         </div>
       </div>

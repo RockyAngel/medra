@@ -27,10 +27,10 @@ const money = (n) => `₦${Math.round(n).toLocaleString("en-NG")}`;
    PLATFORM ECONOMICS -- shared with the customer/seller/rider apps.
    Product commission: 10% added on top of every seller-listed price.
    Delivery commission: 15% of the delivery fee at normal hours,
-   10% during peak hours (12-2pm and 6-9pm) -- rider keeps the rest.
+   10% during peak hours (6-10am and 4-8pm) -- rider keeps the rest.
    ------------------------------------------------------------ */
 const PRODUCT_COMMISSION_RATE = 0.10;
-const PEAK_WINDOWS = [[12, 14], [18, 21]];
+const PEAK_WINDOWS = [[6, 10], [16, 20]]; // Lagos rush hours
 function isPeakHour(date = new Date()) {
   const h = date.getHours();
   return PEAK_WINDOWS.some(([start, end]) => h >= start && h < end);
@@ -1336,7 +1336,7 @@ const STAFF_CHANGELOG = [
   { date: "Aug 21, 2026", tag: "Feature", title: "Reports & Moderation is now a working queue", desc: "Flagged reviews and listings can now be dismissed or removed directly, instead of just viewed." },
   { date: "Aug 20, 2026", tag: "Fix", title: "Fixed inconsistent sidebar badge counts", desc: "Support Tickets, Live Chat, and Notifications badges now match the number of items actually in each queue." },
   { date: "Aug 20, 2026", tag: "Feature", title: "View-As now has an audit trail", desc: "Every use of View-As is logged with actor, target, and timestamp -- visible from the View-As banner." },
-  { date: "Aug 19, 2026", tag: "Policy", title: "Delivery commission during peak hours confirmed at 10%", desc: "Down from the standard 15% during 12-2pm and 6-9pm, to keep riders incentivized during high-demand windows." },
+  { date: "Aug 19, 2026", tag: "Policy", title: "Delivery commission during peak hours confirmed at 10%", desc: "Down from the standard 15% during 6-10am and 4-8pm, to keep riders incentivized during high-demand windows." },
 ];
 
 const FEED_FILTERS = ["All", "Product Updates", "Announcements", "Broadcasts"];
@@ -1973,7 +1973,7 @@ const COMMUNITY_SEED = {
     { author: "Jordan B.", role: "Admin", time: "9:20 AM", text: "The View-As audit log has been really handy for tracing support cases." },
   ],
   all: [
-    { author: "Medra Team", role: "Official", time: "9:00 AM", text: "Reminder: peak delivery hours today run 12-2pm and 6-9pm as usual." },
+    { author: "Medra Team", role: "Official", time: "9:00 AM", text: "Reminder: peak delivery hours today run 6-10am and 4-8pm as usual." },
     { author: "Northside Espresso Bar", role: "Seller", time: "8:25 AM", text: "Good morning everyone! Hope it's a great day for everyone on the platform." },
     { author: "John Rider", role: "Rider", time: "8:40 AM", text: "Roads are clear across Lekki this morning, should be fast deliveries today." },
     { author: "Amara O.", role: "Customer", time: "9:10 AM", text: "Just wanted to say support sorted my issue out really fast, thank you!" },
@@ -2840,8 +2840,8 @@ function SessionsScreen({ logActivity }) {
 }
 
 const ADMIN_ROSTER = [
-  { id: "a1", name: "Casey W.", email: "casey.w@medra.com", role: "Support Staff", caps: new Set(["View orders", "Refund orders"]), status: "active" },
-  { id: "a2", name: "Jordan B.", email: "jordan.b@medra.com", role: "Payment Staff", caps: new Set(["View financials", "Edit commissions"]), status: "active" },
+  { id: "a1", name: "Casey W.", email: "casey.w@medra.com", ninMasked: "*******4821", bvnMasked: "*******7390", role: "Support Staff", caps: new Set(["View orders", "Refund orders"]), status: "active" },
+  { id: "a2", name: "Jordan B.", email: "jordan.b@medra.com", ninMasked: "*******1157", bvnMasked: "*******6602", role: "Payment Staff", caps: new Set(["View financials", "Edit commissions"]), status: "active" },
   { id: "a3", name: "Priya M.", email: "priya.m@medra.com", role: "Content Moderator", caps: new Set(["Suspend accounts", "Post announcements"]), status: "active" },
 ];
 
@@ -2918,7 +2918,7 @@ function CommissionEngineSection() {
           </div>
         </div>
         <div className="field" style={{ marginBottom: 16 }}>
-          <span>Delivery split -- peak hours (12-2pm, 6-9pm)</span>
+          <span>Delivery split -- peak hours (6-10am, 4-8pm)</span>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span className="muted small">Platform</span><input type="number" min="0" max="100" style={{ width: 70 }} value={peakPlatform} onChange={(e) => setPeakPlatform(Math.max(0, Math.min(100, Number(e.target.value) || 0)))} /><span className="muted">%</span>
             <span className="muted small" style={{ marginLeft: 12 }}>Rider</span><span className="mono">{100 - peakPlatform}%</span>
@@ -3152,7 +3152,7 @@ function AppSettingsSection() {
 }
 
 function DeliverySettingsSection() {
-  const [radius, setRadius] = useState(8);
+  const [radius, setRadius] = useState(13);
   const [surcharge, setSurcharge] = useState(1.3);
   const [minFee, setMinFee] = useState(600);
   const [saved, setSaved] = useState(false);
@@ -3162,7 +3162,7 @@ function DeliverySettingsSection() {
       <div className="panel enter">
         <div className="panel-title">Delivery Settings</div>
         <PrototypeNote>saving here updates this screen only -- there's no backend yet to actually change customer/seller behavior. This is the config UI ready for that hookup.</PrototypeNote>
-        <div className="field" style={{ marginBottom: 10 }}><span>Default delivery radius (miles)</span><input type="number" min="1" value={radius} onChange={(e) => setRadius(Number(e.target.value) || 0)} /></div>
+        <div className="field" style={{ marginBottom: 10 }}><span>Default delivery radius (km)</span><input type="number" min="1" value={radius} onChange={(e) => setRadius(Number(e.target.value) || 0)} /></div>
         <div className="field" style={{ marginBottom: 10 }}><span>Peak hour surcharge (multiplier)</span><input type="number" min="1" step="0.1" value={surcharge} onChange={(e) => setSurcharge(Number(e.target.value) || 1)} /></div>
         <div className="field" style={{ marginBottom: 16 }}><span>Minimum delivery fee (₦) -- delivery is never free</span><input type="number" min="1" value={minFee} onChange={(e) => setMinFee(Math.max(1, Number(e.target.value) || 1))} /></div>
         <button className="primary-btn-sm" onClick={save}>{saved ? "Saved for this preview" : "Save changes"}</button>
@@ -3276,7 +3276,15 @@ function NavIntegrityCheckSection() {
   );
 }
 
+// Every staff member (Admin, Support, Payment, Moderator) is created with a NIN and BVN.
+// Only the masked form is kept after saving. Super Admin and customers are exempt.
+const onlyDigits11 = (v) => String(v || "").replace(/\D/g, "").slice(0, 11);
+const maskId = (v) => "*******" + String(v).slice(-4);
 function AdminEditModal({ admin, roles, onClose, onSave }) {
+  const [nin, setNin] = useState("");
+  const [bvn, setBvn] = useState("");
+  const hadIds = !!(admin?.ninMasked && admin?.bvnMasked);
+  const idsOk = hadIds && !nin && !bvn ? true : /^\d{11}$/.test(nin) && /^\d{11}$/.test(bvn);
   const [name, setName] = useState(admin?.name || "");
   const [email, setEmail] = useState(admin?.email || "");
   const [role, setRole] = useState(admin?.role || (roles || PERMISSION_MATRIX_ROLES)[0]);
@@ -3290,6 +3298,9 @@ function AdminEditModal({ admin, roles, onClose, onSave }) {
         <div className="card-name" style={{ fontSize: 16, marginBottom: 12 }}>{admin ? "Edit admin" : "Add a new admin"}</div>
         <div className="field" style={{ marginBottom: 10 }}><span>Name</span><input type="text" value={name} onChange={(e) => setName(e.target.value)} /></div>
         <div className="field" style={{ marginBottom: 10 }}><span>Email</span><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
+        <div className="field" style={{ marginBottom: 10 }}><span>NIN (11 digits){hadIds ? ` -- on file ${admin.ninMasked}` : ""}</span><input type="text" inputMode="numeric" autoComplete="off" maxLength={11} value={nin} onChange={(e) => setNin(onlyDigits11(e.target.value))} placeholder={hadIds ? "Leave blank to keep the one on file" : "11 digits"} /></div>
+        <div className="field" style={{ marginBottom: 10 }}><span>BVN (11 digits){hadIds ? ` -- on file ${admin.bvnMasked}` : ""}</span><input type="text" inputMode="numeric" autoComplete="off" maxLength={11} value={bvn} onChange={(e) => setBvn(onlyDigits11(e.target.value))} placeholder={hadIds ? "Leave blank to keep the one on file" : "11 digits"} /></div>
+        <div className="muted small" style={{ marginBottom: 12 }}>Required for every staff account. Only the last 4 digits are kept after saving. Preview build: format-checked only, not verified against NIMC or a bank.</div>
         <div className="field" style={{ marginBottom: 14 }}>
           <span>Department</span>
           <select className="sort-select" value={role} onChange={(e) => setRole(e.target.value)}>
@@ -3305,7 +3316,7 @@ function AdminEditModal({ admin, roles, onClose, onSave }) {
             </label>
           ))}
         </div>
-        <button className="primary-btn-sm wide" disabled={!name.trim() || !email.trim()} onClick={() => onSave({ id: admin?.id || `a${Date.now()}`, name, email, role, caps, status: admin?.status || "active" })}>Save</button>
+        <button className="primary-btn-sm wide" disabled={!name.trim() || !email.trim() || !idsOk} onClick={() => onSave({ id: admin?.id || `a${Date.now()}`, name, email, role, caps, status: admin?.status || "active", ninMasked: nin ? maskId(nin) : admin?.ninMasked, bvnMasked: bvn ? maskId(bvn) : admin?.bvnMasked })}>Save</button>
       </div>
     </div>
   );

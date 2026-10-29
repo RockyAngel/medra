@@ -13,12 +13,12 @@ const money = (n) => `₦${Math.round(n).toLocaleString("en-NG")}`;
 /* ------------------------------------------------------------
    PLATFORM ECONOMICS -- delivery fee split.
    Platform takes 15% of the delivery fee at normal hours, 10%
-   during peak hours (12-2pm and 6-9pm) -- rider keeps the rest.
+   during peak hours (6-10am and 4-8pm) -- rider keeps the rest.
    ------------------------------------------------------------ */
 const DELIVERY_COMMISSION_NORMAL = 0.15;
 const FUEL_COST_PER_KM = 55;
 const DELIVERY_COMMISSION_PEAK = 0.10;
-const PEAK_WINDOWS = [[12, 14], [18, 21]];
+const PEAK_WINDOWS = [[6, 10], [16, 20]]; // Lagos rush hours
 function isPeakHour(date = new Date()) {
   const h = date.getHours();
   return PEAK_WINDOWS.some(([start, end]) => h >= start && h < end);
@@ -67,42 +67,58 @@ const WEATHER_DEMAND = [
 ];
 /* ------------------------------------------------------------
    ORDER SIZE CLASSES -- the seller assigns one per order from its weight.
-   Small < 35 lb and Medium up to 60 lb pay the normal delivery fee.
-   Large (60-100 lb) pays double. Oversized (over 100 lb) pays triple, or the
+   Small (under 16 kg) and Medium (16-27 kg) pay the normal delivery fee.
+   Large (27-45 kg) pays double. Oversized (over 45 kg) pays triple, or the
    customer can arrange their own pickup instead.
    ------------------------------------------------------------ */
 const ORDER_SIZES = [
-  { key: "small", label: "Small", range: "under 35 lb", multiplier: 1, color: "#16A34A" },
-  { key: "medium", label: "Medium", range: "35-60 lb", multiplier: 1, color: "#2563EB" },
-  { key: "large", label: "Large", range: "60-100 lb", multiplier: 2, color: "#EA580C" },
-  { key: "oversized", label: "Oversized", range: "over 100 lb", multiplier: 3, color: "#DC2626" },
+  { key: "small", label: "Small", range: "under 16 kg", multiplier: 1, color: "#16A34A" },
+  { key: "medium", label: "Medium", range: "16-27 kg", multiplier: 1, color: "#2563EB" },
+  { key: "large", label: "Large", range: "27-45 kg", multiplier: 2, color: "#EA580C" },
+  { key: "oversized", label: "Oversized", range: "over 45 kg", multiplier: 3, color: "#DC2626" },
 ];
-function orderSizeForWeight(lb) {
-  const w = Number(lb);
+function orderSizeForWeight(kg) {
+  const w = Number(kg);
   if (!(w > 0)) return null;
-  if (w < 35) return ORDER_SIZES[0];
-  if (w <= 60) return ORDER_SIZES[1];
-  if (w <= 100) return ORDER_SIZES[2];
+  if (w < 16) return ORDER_SIZES[0];
+  if (w <= 27) return ORDER_SIZES[1];
+  if (w <= 45) return ORDER_SIZES[2];
   return ORDER_SIZES[3];
 }
+/* ------------------------------------------------------------
+   VEHICLES -- a rider only sees orders their vehicle can carry.
+   maxSize is the largest size class the vehicle takes (index into ORDER_SIZES).
+   ------------------------------------------------------------ */
+const VEHICLES = [
+  { key: "bicycle", label: "Bicycle", maxSize: 0, note: "Small orders only (under 16 kg)", rangeKm: 3 },
+  { key: "bike", label: "Motorbike (okada)", maxSize: 1, note: "Small and Medium orders (up to 27 kg)", rangeKm: 8 },
+  { key: "tricycle", label: "Tricycle (keke)", maxSize: 2, note: "Up to Large orders (up to 45 kg)", rangeKm: 10 },
+  { key: "car", label: "Car", maxSize: 2, note: "Up to Large orders (up to 45 kg)", rangeKm: 999 },
+  { key: "van", label: "Van or truck", maxSize: 3, note: "All sizes, including Oversized", rangeKm: 999 },
+];
+const vehicleByKey = (k) => VEHICLES.find((v) => v.key === k) || VEHICLES[1];
+function vehicleFits(vehicleKey, sizeKey) {
+  const idx = ORDER_SIZES.findIndex((z) => z.key === sizeKey);
+  return (idx < 0 ? 0 : idx) <= vehicleByKey(vehicleKey).maxSize;
+}
 const orderSizeByKey = (k) => ORDER_SIZES.find((s) => s.key === k) || null;
-function SizeBadge({ sizeKey, weightLb }) {
+function SizeBadge({ sizeKey, weightKg }) {
   const sz = orderSizeByKey(sizeKey);
   if (!sz) return <span className="status-pill" style={{ background: "#F1F5F9", color: "#64748B" }}>Size not set</span>;
-  return <span className="status-pill" style={{ background: sz.color + "1A", color: sz.color, fontWeight: 700 }}>{sz.label} order{weightLb ? ` -- ${weightLb} lb` : ""}{sz.multiplier > 1 ? ` -- delivery x${sz.multiplier}` : ""}</span>;
+  return <span className="status-pill" style={{ background: sz.color + "1A", color: sz.color, fontWeight: 700 }}>{sz.label} order{weightKg ? ` -- ${weightKg} kg` : ""}{sz.multiplier > 1 ? ` -- delivery x${sz.multiplier}` : ""}</span>;
 }
 
 const NEW_ORDERS_POOL = [
-  { id: "MD28391", vendor: "Chicken Republic", area: "Victoria Island", distance: "2.1 km away", deliveryFee: 900, weightLb: 12, cod: false },
-  { id: "MD28392", vendor: "SuperMart Grocery", area: "Lekki Phase 1", distance: "3.4 km away", deliveryFee: 1200, weightLb: 48, cod: true, codAmount: 15450 },
-  { id: "MD28393", vendor: "Dee Pharmacy", area: "Yaba", distance: "1.7 km away", deliveryFee: 700, weightLb: 9, cod: false },
-  { id: "MD28395", vendor: "Bean There Coffee", area: "Victoria Island", distance: "2.4 km away", deliveryFee: 650, weightLb: 72, cod: false },
-  { id: "MD28396", vendor: "Fresh Fields Grocery", area: "Victoria Island", distance: "1.9 km away", deliveryFee: 800, weightLb: 28, cod: false },
+  { id: "MD28391", vendor: "Chicken Republic", area: "Victoria Island", distance: "2.1 km away", deliveryFee: 900, weightKg: 5, cod: false },
+  { id: "MD28392", vendor: "SuperMart Grocery", area: "Lekki Phase 1", distance: "3.4 km away", deliveryFee: 1200, weightKg: 22, cod: true, codAmount: 15450 },
+  { id: "MD28393", vendor: "Dee Pharmacy", area: "Yaba", distance: "1.7 km away", deliveryFee: 700, weightKg: 4, cod: false },
+  { id: "MD28395", vendor: "Bean There Coffee", area: "Victoria Island", distance: "2.4 km away", deliveryFee: 650, weightKg: 33, cod: false },
+  { id: "MD28396", vendor: "Fresh Fields Grocery", area: "Victoria Island", distance: "1.9 km away", deliveryFee: 800, weightKg: 13, cod: false },
 ];
 // Every offer carries a size class from its weight; the delivery fee shown to
 // the rider already includes the Large (x2) surcharge.
 NEW_ORDERS_POOL.forEach((o) => {
-  const sz = orderSizeForWeight(o.weightLb);
+  const sz = orderSizeForWeight(o.weightKg);
   o.sizeKey = sz ? sz.key : null;
   o.baseDeliveryFee = o.deliveryFee;
   o.deliveryFee = o.deliveryFee * (sz ? sz.multiplier : 1);
@@ -143,9 +159,9 @@ const NOTIFICATIONS = [
 ];
 
 const DELIVERIES_HISTORY = [
-  { id: "T2201", vendor: "Fresh Fields Grocery", payout: 296, distance: 1.8, time: "Today, 11:20 AM" },
-  { id: "T2198", vendor: "Northside Espresso Bar", payout: 364, distance: 2.9, time: "Today, 9:52 AM" },
-  { id: "T2190", vendor: "Ceramic & Co.", payout: 492, distance: 3.4, time: "Yesterday, 6:10 PM" },
+  { id: "T2201", vendor: "Fresh Fields Grocery", payout: 296, distance: 2.9, time: "Today, 11:20 AM" },
+  { id: "T2198", vendor: "Northside Espresso Bar", payout: 364, distance: 4.7, time: "Today, 9:52 AM" },
+  { id: "T2190", vendor: "Ceramic & Co.", payout: 492, distance: 5.5, time: "Yesterday, 6:10 PM" },
 ];
 
 const SCHEDULE = [
@@ -365,7 +381,7 @@ const SAFETY_TIPS = [
   "If a delivery location feels unsafe, contact support before proceeding.",
 ];
 
-const PRESHIFT_ITEMS = ["Helmet with you", "Phone charged above 50%", "Enough fuel for the shift", "Delivery bag clean and ready"];
+const PRESHIFT_ITEMS = ["Helmet with you", "Phone charged above 50%", "Enough fuel for the shift", "Delivery bag clean and ready", "Power bank and enough data for navigation"];
 const DECLINE_REASONS = ["Too far from my location", "Order value too small", "Unsafe or hard-to-reach pickup area", "Already have too many orders", "Vehicle issue", "Other"];
 
 function PreShiftChecklistModal({ onStart, onClose }) {
@@ -436,7 +452,7 @@ function DashboardSkeleton() {
   );
 }
 
-function SharedDeliveriesSection({ sharedOrderStore, setTodayEarnings, setTodayOrders }) {
+function SharedDeliveriesSection({ vehicleType, sharedOrderStore, setTodayEarnings, setTodayOrders }) {
   // Real payment timing: watch the shared store for any of THIS rider's orders
   // that just became fully "delivered" (both rider and customer confirmed) --
   // pay out exactly then, exactly once, regardless of which side confirmed last.
@@ -464,7 +480,7 @@ function SharedDeliveriesSection({ sharedOrderStore, setTodayEarnings, setTodayO
   if (!sharedOrderStore) {
     return <div className="section-pad"><div className="panel enter"><div className="muted small">This queue only works inside the combined preview -- open combined.html to see real orders arrive here once a seller has confirmed them.</div></div></div>;
   }
-  const available = sharedOrderStore.orders.filter((o) => o.stage === "seller_preparing" && o.oversizeChoice !== "self_pickup");
+  const available = sharedOrderStore.orders.filter((o) => o.stage === "seller_preparing" && o.oversizeChoice !== "self_pickup" && vehicleFits(vehicleType, o.sizeClass));
   const [deliveryPhotos, setDeliveryPhotos] = useState({});
   const myActive = sharedOrderStore.orders.filter((o) => o.assignedRider === RIDER.name && ["rider_assigned", "picked_up", "on_the_way", "delivered_awaiting_customer_confirm"].includes(o.stage));
 
@@ -488,7 +504,7 @@ function SharedDeliveriesSection({ sharedOrderStore, setTodayEarnings, setTodayO
           <div className="confirm-modal enter" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close" onClick={() => setPreviewOrder(null)}><X size={16} /></button>
             <div className="card-name" style={{ fontSize: 15, marginBottom: 10 }}>Route preview -- Order #{previewOrder.id}</div>
-            <div style={{ marginBottom: 10 }}><SizeBadge sizeKey={previewOrder.sizeClass} weightLb={previewOrder.weightLb} /></div>
+            <div style={{ marginBottom: 10 }}><SizeBadge sizeKey={previewOrder.sizeClass} weightKg={previewOrder.weightKg} /></div>
             <svg viewBox="0 0 320 140" style={{ width: "100%", height: 140, background: "#F8FAFC", borderRadius: 12 }}>
               <path d="M 30 100 Q 120 20 290 60" fill="none" stroke="#7C3AED" strokeWidth="3" strokeDasharray="6 6" />
               <circle cx="30" cy="100" r="7" fill="#EA580C" /><text x="30" y="122" fontSize="10" textAnchor="middle" fill="#334155">Pickup</text>
@@ -509,7 +525,7 @@ function SharedDeliveriesSection({ sharedOrderStore, setTodayEarnings, setTodayO
           <div className="list-col">
             {available.map((o) => (
               <div key={o.id} className="pending-row">
-                <div className="ti-mid"><div className="card-name">Order #{o.id}</div><div className="muted small">{o.customerName} -- {(o.items || []).length} item{(o.items || []).length !== 1 ? "s" : ""}{o.tipPoints > 0 ? ` -- includes a ${money(o.tipPoints)} tip` : ""}</div><div style={{ marginTop: 4 }}><SizeBadge sizeKey={o.sizeClass} weightLb={o.weightLb} /></div></div>
+                <div className="ti-mid"><div className="card-name">Order #{o.id}</div><div className="muted small">{o.customerName} -- {(o.items || []).length} item{(o.items || []).length !== 1 ? "s" : ""}{o.tipPoints > 0 ? ` -- includes a ${money(o.tipPoints)} tip` : ""}</div><div style={{ marginTop: 4 }}><SizeBadge sizeKey={o.sizeClass} weightKg={o.weightKg} /></div></div>
                 <button className="ghost-btn-sm" onClick={() => setPreviewOrder(o)}>Preview route</button>
                 <button className="accept-btn" onClick={() => accept(o)}>Accept</button>
               </div>
@@ -554,7 +570,7 @@ function BusyZonesScreen({ newOrders, favoriteZones, onToggleFavorite, vehicleTy
   const ZONES = ["Victoria Island", "Lekki Phase 1", "Yaba"];
   const peak = isPeakHour();
   const MAX_FAVORITES = 2;
-  const VEHICLE_RANGE_KM = { bicycle: 3, bike: 8, car: 999 };
+  const VEHICLE_RANGE_KM = Object.fromEntries(VEHICLES.map((v) => [v.key, v.rangeKm]));
   const goodRange = VEHICLE_RANGE_KM[vehicleType] || 8;
   // Real demand score: live count of currently-pending orders in that zone, boosted
   // during real peak-hour windows -- not random, genuinely responds to order flow.
@@ -592,8 +608,8 @@ function BusyZonesScreen({ newOrders, favoriteZones, onToggleFavorite, vehicleTy
         <div className="muted small" style={{ marginBottom: 12 }}>Based on historical order patterns across all zones -- separate from the live snapshot above.</div>
         {(() => {
           const TIME_BLOCKS = [
-            { label: "Morning (6-11am)", v: 30 }, { label: "Midday (11am-2pm)", v: 78 },
-            { label: "Afternoon (2-6pm)", v: 45 }, { label: "Evening (6-9pm)", v: 92 }, { label: "Night (9pm-12am)", v: 55 },
+            { label: "Morning rush (6-10am)", v: 85 }, { label: "Midday (10am-4pm)", v: 50 },
+            { label: "Evening rush (4-8pm)", v: 95 }, { label: "Night (8pm-12am)", v: 55 },
           ];
           const max = Math.max(...TIME_BLOCKS.map((b) => b.v));
           const currentHour = new Date().getHours();
@@ -627,7 +643,7 @@ function BusyZonesScreen({ newOrders, favoriteZones, onToggleFavorite, vehicleTy
   );
 }
 
-function DashboardScreen({ online, setOnline, newOrders, onAccept, onReject, onBatch, activeTrip, stageIdx, onAdvance, onHandoff, kpis, onNavigate, declineLog, todayEarnings, todayOrders, favoriteZones }) {
+function DashboardScreen({ hiddenOrders = 0, vehicleType, online, setOnline, newOrders, onAccept, onReject, onBatch, activeTrip, stageIdx, onAdvance, onHandoff, kpis, onNavigate, declineLog, todayEarnings, todayOrders, favoriteZones }) {
   const [decliningOrderId, setDecliningOrderId] = useState(null);
   const [declineReason, setDeclineReason] = useState("");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
@@ -664,7 +680,7 @@ function DashboardScreen({ online, setOnline, newOrders, onAccept, onReject, onB
       <div className="section-pad">
         {handoffOpen && <HandoffModal onClose={() => setHandoffOpen(false)} onHandoff={(name) => { onHandoff(name); setHandoffOpen(false); }} />}
         <div className="panel enter">
-          <div className="panel-title-row"><div className="panel-title">Active delivery -- {activeTrip.id} <span style={{ marginLeft: 8, fontWeight: 400 }}><SizeBadge sizeKey={activeTrip.sizeKey} weightLb={activeTrip.weightLb} /></span></div><div className="rev-delta">{money(riderPayout(activeTrip.deliveryFee) + (activeTrip.batched || []).reduce((s, o) => s + riderPayout(o.deliveryFee), 0))} payout</div></div>
+          <div className="panel-title-row"><div className="panel-title">Active delivery -- {activeTrip.id} <span style={{ marginLeft: 8, fontWeight: 400 }}><SizeBadge sizeKey={activeTrip.sizeKey} weightKg={activeTrip.weightKg} /></span></div><div className="rev-delta">{money(riderPayout(activeTrip.deliveryFee) + (activeTrip.batched || []).reduce((s, o) => s + riderPayout(o.deliveryFee), 0))} payout</div></div>
           <div className="muted small" style={{ background: "#FEF3C7", color: "#92400E", padding: "6px 10px", borderRadius: 8, marginBottom: 10, fontWeight: 600 }}>Practice delivery -- not connected to a real customer order. Accept a job from Available Deliveries (Live) instead to fulfill a real one.</div>
           <div className="muted small" style={{ marginBottom: 10 }}>{peak && <span className="status-pill route">Peak hours -- until {peakEndsAt()}</span>}</div>
           {activeTrip.cod && <div className="cod-banner"><Wallet size={13} /> Collect {money(activeTrip.codAmount)} cash from the customer on delivery</div>}
@@ -814,7 +830,7 @@ function DashboardScreen({ online, setOnline, newOrders, onAccept, onReject, onB
                         <div className="card-name">Order #{o.id}</div>
                         <div className="muted">{o.vendor}, {o.area}</div>
                         <div className="muted small">{o.distance} -- ~{money(fuelCost)} fuel round trip</div>
-                        <div style={{ margin: "4px 0" }}><SizeBadge sizeKey={o.sizeKey} weightLb={o.weightLb} /></div>
+                        <div style={{ margin: "4px 0" }}><SizeBadge sizeKey={o.sizeKey} weightKg={o.weightKg} /></div>
                         {o.cod && <span className="cod-badge">Collect {money(o.codAmount)} cash</span>}
                       </div>
                       <div style={{ marginRight: 10, textAlign: "right" }}><div className="mono" style={{ fontWeight: 700 }}>{money(riderPayout(o.deliveryFee))}</div><div className="muted small">your payout</div></div>
@@ -823,6 +839,7 @@ function DashboardScreen({ online, setOnline, newOrders, onAccept, onReject, onB
                     </div>
                   );
                 })}
+                {hiddenOrders > 0 && <div className="muted small" style={{ marginTop: 8 }}>{hiddenOrders} order{hiddenOrders > 1 ? "s are" : " is"} hidden because your {vehicleByKey(vehicleType).label.toLowerCase()} cannot carry {hiddenOrders > 1 ? "them" : "it"}. Change your vehicle in Settings if it has changed.</div>}
                 {newOrders.length === 0 && <EmptyStateNote>No new orders right now -- stay online to keep receiving them.</EmptyStateNote>}
               </div>
               {decliningOrderId && (
@@ -953,7 +970,7 @@ function exportCsv(filename, rows) {
 
 function DeliveriesScreen() {
   const exportTrips = () => {
-    const rows = [["Trip", "Vendor", "Distance (mi)", "Payout", "Time"]];
+    const rows = [["Trip", "Vendor", "Distance (km)", "Payout", "Time"]];
     DELIVERIES_HISTORY.forEach((t) => rows.push([t.id, t.vendor, t.distance, t.payout, t.time]));
     exportCsv("medra-trip-history.csv", rows);
   };
@@ -963,7 +980,7 @@ function DeliveriesScreen() {
         <div className="panel-title-row"><div className="panel-title">My Deliveries</div><button className="ghost-btn-sm" onClick={exportTrips}><FileDown size={12} /> Export CSV</button></div>
         <table className="admin-table">
           <thead><tr><th>Trip</th><th>Vendor</th><th>Distance</th><th>Payout</th><th>Time</th></tr></thead>
-          <tbody>{DELIVERIES_HISTORY.map((t) => <tr key={t.id}><td className="mono">{t.id}</td><td>{t.vendor}</td><td className="muted">{t.distance} mi</td><td className="mono">{money(t.payout)}</td><td className="muted">{t.time}</td></tr>)}</tbody>
+          <tbody>{DELIVERIES_HISTORY.map((t) => <tr key={t.id}><td className="mono">{t.id}</td><td>{t.vendor}</td><td className="muted">{t.distance} km</td><td className="mono">{money(t.payout)}</td><td className="muted">{t.time}</td></tr>)}</tbody>
         </table>
       </div>
     </div>
@@ -1242,7 +1259,7 @@ function EarningsScreen({ todayEarnings, withdrawals, submitWithdrawal, teleheal
       </div>
       <div className="panel enter">
         <div className="panel-title">How your payout is calculated</div>
-        <div className="muted">You see your exact payout before accepting every delivery -- no surprises. Payouts are higher during peak hours (12-2pm and 6-9pm).</div>
+        <div className="muted">You see your exact payout before accepting every delivery -- no surprises. Payouts are higher during peak hours (6-10am and 4-8pm).</div>
       </div>
       <div className="panel enter">
         <div className="panel-title">Recent trips & transactions</div>
@@ -1458,15 +1475,15 @@ function FrequentPickupsSection() {
 
 function ProfileScreen() {
   const [maintenance, setMaintenance] = useState([
-    { type: "Oil change", date: "Jun 14, 2026", mileage: "12,400 mi" },
-    { type: "Tire rotation", date: "May 2, 2026", mileage: "10,800 mi" },
+    { type: "Engine oil change", date: "Jun 14, 2026", mileage: "19,900 km" },
+    { type: "Tyre change", date: "May 2, 2026", mileage: "17,400 km" },
   ]);
   const [logOpen, setLogOpen] = useState(false);
-  const [logType, setLogType] = useState("Oil change");
+  const [logType, setLogType] = useState("Engine oil change");
   const [logMileage, setLogMileage] = useState("");
   const addLog = () => {
     if (!logMileage.trim()) return;
-    setMaintenance((m) => [{ type: logType, date: "Today", mileage: `${logMileage} mi` }, ...m]);
+    setMaintenance((m) => [{ type: logType, date: "Today", mileage: `${logMileage} km` }, ...m]);
     setLogMileage(""); setLogOpen(false);
   };
   return (
@@ -1479,10 +1496,10 @@ function ProfileScreen() {
             <div className="field" style={{ marginBottom: 10 }}>
               <span>Type</span>
               <select className="sort-select" value={logType} onChange={(e) => setLogType(e.target.value)}>
-                <option>Oil change</option><option>Tire rotation</option><option>Brake check</option><option>General inspection</option>
+                <option>Engine oil change</option><option>Tyre change</option><option>Chain and sprocket</option><option>Brake pads</option><option>General inspection</option>
               </select>
             </div>
-            <div className="field" style={{ marginBottom: 16 }}><span>Current mileage</span><input type="number" value={logMileage} onChange={(e) => setLogMileage(e.target.value)} placeholder="e.g. 13200" /></div>
+            <div className="field" style={{ marginBottom: 16 }}><span>Current odometer (km)</span><input type="number" value={logMileage} onChange={(e) => setLogMileage(e.target.value)} placeholder="e.g. 13200" /></div>
             <button className="primary-btn-sm wide" onClick={addLog}>Save</button>
           </div>
         </div>
@@ -1675,10 +1692,10 @@ const COMMUNITY_SEED = {
   peers: [
     { author: "Emeka N.", role: "Rider", time: "8:12 AM", text: "Anyone else seeing heavy traffic on Ring Road this morning?" },
     { author: "Priya S.", role: "Rider", time: "8:20 AM", text: "Yeah, took me 15 extra minutes. Worth avoiding for now." },
-    { author: "Marcus T.", role: "Rider", time: "9:20 AM", text: "Peak hour bonus really adds up if you push through 12-2." },
+    { author: "Marcus T.", role: "Rider", time: "9:20 AM", text: "Peak hour bonus really adds up if you push through the morning rush." },
   ],
   all: [
-    { author: "Medra Team", role: "Official", time: "9:05 AM", text: "Reminder: peak delivery hours today run 12-2pm and 6-9pm as usual." },
+    { author: "Medra Team", role: "Official", time: "9:05 AM", text: "Reminder: peak delivery hours today run 6-10am and 4-8pm as usual." },
     { author: "Northside Espresso Bar", role: "Seller", time: "8:35 AM", text: "Thanks for the patience out there this morning, riders!" },
     { author: "Amara O.", role: "Customer", time: "8:50 AM", text: "Shoutout to my rider this morning, super fast and friendly!" },
     { author: "Priya M.", role: "Admin", time: "9:10 AM", text: "Good morning all! Let us know here if anything needs our attention." },
@@ -1777,7 +1794,7 @@ function draftRiderAIResponse(input, { todayEarnings, todayOrders }) {
     const peak = isPeakHour();
     return peak
       ? { text: `You're in a peak window right now -- it runs until ${peakEndsAt()}. Your payout per delivery is higher right now.` }
-      : { text: "It's not peak hours right now. Peak windows run 12-2pm and 6-9pm daily, when your payout per delivery is higher." };
+      : { text: "It's not peak hours right now. Peak windows run 6-10am and 4-8pm daily, when your payout per delivery is higher." };
   }
   if (t.includes("badge") || t.includes("streak") || t.includes("century")) {
     const unearned = RIDER_BADGES.filter((b) => !b.earned);
@@ -1979,11 +1996,9 @@ function SettingsScreen({ shiftReminder, setShiftReminder, radius, setRadius, la
         <div className="panel-title">Settings</div>
         <div className="list-col">
           <button className="flag-row nav-flag" onClick={() => setWalkthroughOpen(true)}><Compass size={15} /><div className="ti-mid"><div className="card-name">Walk me through this app</div><div className="muted">A quick tour of what everything in the rider app does</div></div><ChevronRight size={15} /></button>
-          <div className="flag-row"><div className="ti-mid"><div className="card-name">Vehicle type</div><div className="muted">Affects which busy zones make sense for your range</div></div>
+          <div className="flag-row"><div className="ti-mid"><div className="card-name">Vehicle type</div><div className="muted">You only see orders your vehicle can carry. {vehicleByKey(vehicleType).note}.</div></div>
             <select className="sort-select" value={vehicleType} onChange={(e) => setVehicleType(e.target.value)}>
-              <option value="bicycle">Bicycle</option>
-              <option value="bike">Motorbike</option>
-              <option value="car">Car</option>
+              {VEHICLES.map((v) => <option key={v.key} value={v.key}>{v.label}</option>)}
             </select>
           </div>
           <div className="flag-row"><Wrench size={15} /><div className="ti-mid"><div className="card-name">Last serviced</div><div className="muted">{lastServicedDate ? `${new Date(lastServicedDate).toLocaleDateString()} -- ${daysSinceService} days ago` : "Not logged yet"}</div></div>
@@ -2237,10 +2252,34 @@ function RiderLandingPage({ onJoin, onSignIn }) {
   );
 }
 
+/* NIN + BVN capture for sign-up (Rider, Seller, Admin, Support -- not Customers or Super Admin).
+   Prototype: format check only (11 digits each). Real verification needs an identity provider. */
+const onlyDigits = (v) => String(v || "").replace(/\D/g, "").slice(0, 11);
+const idFieldsValid = (nin, bvn) => /^\d{11}$/.test(nin) && /^\d{11}$/.test(bvn);
+function IdFields({ nin, setNin, bvn, setBvn }) {
+  const bad = (v) => v.length > 0 && v.length < 11;
+  return (
+    <>
+      <label className="field"><span>NIN (National Identification Number)</span>
+        <input type="text" inputMode="numeric" autoComplete="off" value={nin} onChange={(e) => setNin(onlyDigits(e.target.value))} placeholder="11 digits" maxLength={11} required aria-invalid={bad(nin)} />
+        {bad(nin) && <span className="muted small" style={{ color: "#DC2626" }}>NIN must be 11 digits</span>}
+      </label>
+      <label className="field"><span>BVN (Bank Verification Number)</span>
+        <input type="text" inputMode="numeric" autoComplete="off" value={bvn} onChange={(e) => setBvn(onlyDigits(e.target.value))} placeholder="11 digits" maxLength={11} required aria-invalid={bad(bvn)} />
+        {bad(bvn) && <span className="muted small" style={{ color: "#DC2626" }}>BVN must be 11 digits</span>}
+      </label>
+      <div className="muted small">We keep only the last 4 digits visible after sign-up. Preview build: numbers are format-checked only, not verified against NIMC or your bank.</div>
+    </>
+  );
+}
+
 function LoginScreen({ onLogin }) {
   const [mode, setMode] = useState("signin");
   const [loading, setLoading] = useState(false);
-  const submit = (e) => { e.preventDefault(); setLoading(true); setTimeout(() => { setLoading(false); onLogin(); }, 700); };
+  const [nin, setNin] = useState("");
+  const [bvn, setBvn] = useState("");
+  const idsOk = mode !== "signup" || idFieldsValid(nin, bvn);
+  const submit = (e) => { e.preventDefault(); if (!idsOk) return; setLoading(true); setTimeout(() => { setLoading(false); onLogin(); }, 700); };
   return (
     <div className="medra-root">
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" />
@@ -2252,7 +2291,7 @@ function LoginScreen({ onLogin }) {
             <div><div className="brand-word">medra</div><div className="brand-tag">Deliver Smiles. Every Mile.</div></div>
           </div>
           <div className="staff-login-title" style={{ marginTop: 18 }}>{mode === "signin" ? "Welcome back" : "Apply to drive"}</div>
-          <div className="muted">{mode === "signin" ? "Sign in to go online and start earning" : "Driver accounts require license & insurance verification"}</div>
+          <div className="muted">{mode === "signin" ? "Sign in to go online and start earning" : "Rider accounts need your NIN, BVN and vehicle papers for verification"}</div>
           <div className="login-tabs">
             <button type="button" className={`login-tab ${mode === "signin" ? "active" : ""}`} onClick={() => setMode("signin")}>Sign in</button>
             <button type="button" className={`login-tab ${mode === "signup" ? "active" : ""}`} onClick={() => setMode("signup")}>Apply to drive</button>
@@ -2262,7 +2301,8 @@ function LoginScreen({ onLogin }) {
             {mode === "signup" && <label className="field"><span>Full name</span><input type="text" defaultValue="John Rider" placeholder="John Rider" required /></label>}
             <label className="field"><span>Email</span><input type="email" defaultValue="demo@medra.com" placeholder="you@example.com" required /></label>
             <label className="field"><span>Password</span><input type="password" defaultValue="demo1234" placeholder="********" required /></label>
-            <button className={`primary-btn wide green ${loading ? "loading" : ""}`} type="submit" disabled={loading}>{loading ? <span className="spinner" /> : mode === "signin" ? "Sign in" : "Submit application"}</button>
+            {mode === "signup" && <IdFields nin={nin} setNin={setNin} bvn={bvn} setBvn={setBvn} />}
+            <button className={`primary-btn wide green ${loading ? "loading" : ""}`} type="submit" disabled={loading || !idsOk}>{loading ? <span className="spinner" /> : mode === "signin" ? "Sign in" : "Submit application"}</button>
           </form>
         </div>
       </div>
@@ -2352,6 +2392,9 @@ export default function MedraRiderApp({ sharedAuthed, onAuth, onLogout, sharedOr
   const [notifOpen, setNotifOpen] = useState(false);
   const [shiftReminder, setShiftReminder] = useState(true);
   const [vehicleType, setVehicleType] = useState("bike");
+  // Only offers this vehicle can carry are shown; the rest are hidden, not rejected.
+  const visibleOrders = newOrders.filter((o) => vehicleFits(vehicleType, o.sizeKey));
+  const hiddenOrders = newOrders.length - visibleOrders.length;
   const [notifications, setNotifications] = useState(NOTIFICATIONS);
   const [shiftReminderSent, setShiftReminderSent] = useState(false);
   useEffect(() => {
@@ -2417,10 +2460,10 @@ export default function MedraRiderApp({ sharedAuthed, onAuth, onLogout, sharedOr
   const activeLabel = NAV_ITEMS.find((i) => i.key === active)?.label || "Dashboard";
 
   const SCREENS = {
-    dashboard: appLoading ? <DashboardSkeleton /> : <DashboardScreen online={online} setOnline={setOnline} newOrders={newOrders} onAccept={onAccept} onReject={onReject} onBatch={onBatch} activeTrip={activeTrip} stageIdx={stageIdx} onAdvance={onAdvance} onHandoff={onHandoff} kpis={dynamicKpis} onNavigate={setActive} declineLog={declineLog} todayEarnings={todayEarnings} todayOrders={todayOrders} favoriteZones={favoriteZones} />,
-    "new-orders": <DashboardScreen online={online} setOnline={setOnline} newOrders={newOrders} onAccept={onAccept} onReject={onReject} onBatch={onBatch} activeTrip={activeTrip} stageIdx={stageIdx} onAdvance={onAdvance} onHandoff={onHandoff} kpis={dynamicKpis} onNavigate={setActive} declineLog={declineLog} todayEarnings={todayEarnings} todayOrders={todayOrders} favoriteZones={favoriteZones} />,
-    "busy-zones": <BusyZonesScreen newOrders={newOrders} favoriteZones={favoriteZones} onToggleFavorite={toggleFavoriteZone} vehicleType={vehicleType} />,
-    "shared-deliveries": <SharedDeliveriesSection sharedOrderStore={sharedOrderStore} setTodayEarnings={setTodayEarnings} setTodayOrders={setTodayOrders} />,
+    dashboard: appLoading ? <DashboardSkeleton /> : <DashboardScreen online={online} setOnline={setOnline} newOrders={visibleOrders} hiddenOrders={hiddenOrders} vehicleType={vehicleType} onAccept={onAccept} onReject={onReject} onBatch={onBatch} activeTrip={activeTrip} stageIdx={stageIdx} onAdvance={onAdvance} onHandoff={onHandoff} kpis={dynamicKpis} onNavigate={setActive} declineLog={declineLog} todayEarnings={todayEarnings} todayOrders={todayOrders} favoriteZones={favoriteZones} />,
+    "new-orders": <DashboardScreen online={online} setOnline={setOnline} newOrders={visibleOrders} hiddenOrders={hiddenOrders} vehicleType={vehicleType} onAccept={onAccept} onReject={onReject} onBatch={onBatch} activeTrip={activeTrip} stageIdx={stageIdx} onAdvance={onAdvance} onHandoff={onHandoff} kpis={dynamicKpis} onNavigate={setActive} declineLog={declineLog} todayEarnings={todayEarnings} todayOrders={todayOrders} favoriteZones={favoriteZones} />,
+    "busy-zones": <BusyZonesScreen newOrders={visibleOrders} favoriteZones={favoriteZones} onToggleFavorite={toggleFavoriteZone} vehicleType={vehicleType} />,
+    "shared-deliveries": <SharedDeliveriesSection vehicleType={vehicleType} sharedOrderStore={sharedOrderStore} setTodayEarnings={setTodayEarnings} setTodayOrders={setTodayOrders} />,
     profile: <ProfileScreen />,
     refer: <ReferScreen points={riderPoints} setPoints={setRiderPoints} referrals={riderReferrals} setReferrals={setRiderReferrals} lifetimeTrips={1284} milestone50Claimed={milestone50Claimed} setMilestone50Claimed={setMilestone50Claimed} />,
     deliveries: <DeliveriesScreen />,
@@ -2464,7 +2507,7 @@ export default function MedraRiderApp({ sharedAuthed, onAuth, onLogout, sharedOr
                     {isOpen && groupItems.map((item) => (
                       <button key={item.key} className={`side-btn ${active === item.key ? "active" : ""}`} onClick={() => setActive(item.key)}>
                         <item.icon size={16} /> {item.label}
-                        {item.key === "new-orders" && newOrders.length > 0 && <span className="side-badge">{newOrders.length}</span>}
+                        {item.key === "new-orders" && visibleOrders.length > 0 && <span className="side-badge">{visibleOrders.length}</span>}
                         {item.badge && <span className="side-badge">{item.badge}</span>}
                       </button>
                     ))}
