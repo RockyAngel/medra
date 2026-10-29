@@ -23,11 +23,11 @@ npm test        # smoke-renders all 8 apps
   - Medium: 16-27 kg, normal delivery fee
   - Large: 27-45 kg, double the delivery fee
   - Oversized: over 45 kg, triple the delivery fee, or the customer arranges their own pickup
-- Units: kilometres and kilograms everywhere; cooking temperatures stay in °F
+- Units: kilometres everywhere; weights default to kilograms, and each customer can switch to pounds in their own settings; cooking temperatures stay in °F
 - Riders only see orders their vehicle can carry: bicycle = Small, motorbike = up to Medium, tricycle (keke) and car = up to Large, van/truck = all sizes
 - NIN and BVN (11 digits each) are required at sign-up for Riders, Sellers, Admin and Support staff; Customers and Super Admin are exempt. Preview build: format-checked only, only the last 4 digits kept
 - Emergency warning also triggers on Pidgin, Yoruba, Hausa and Igbo phrases (native-speaker review needed)
-- Peak hours are Lagos rush hours: 6-10am and 4-8pm
+- Peak hours are 6-10am, 12-2pm and 4-9pm (morning rush, lunch, evening rush)
 - No USSD, POS-on-delivery or virtual-account payment options
 - **Order statuses** are one set everywhere: Placed, Preparing, Out for Delivery, Delivered, Cancelled.
 - **Reverse auction:** a losing bid under 150 points forfeits the whole bid; a losing bid of 150 or more pays a 2% entry fee.

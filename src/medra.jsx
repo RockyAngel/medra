@@ -176,7 +176,7 @@ const DONATION_CAUSES = [
 const PRODUCT_COMMISSION_RATE = 0.10;
 const DELIVERY_COMMISSION_NORMAL = 0.15;
 const DELIVERY_COMMISSION_PEAK = 0.10;
-const PEAK_WINDOWS = [[6, 10], [16, 20]]; // Lagos rush hours
+const PEAK_WINDOWS = [[6, 10], [12, 14], [16, 21]]; // morning rush, lunch, evening rush
 function isPeakHour(date = new Date()) {
   const h = date.getHours();
   return PEAK_WINDOWS.some(([start, end]) => h >= start && h < end);
@@ -2412,7 +2412,7 @@ function ProductModal({ product, onClose, onAdd, onOpenProduct, onOpenStore, uni
           )}
           {product.weightKg && (
             <div className="muted small" style={{ marginBottom: 8 }}>
-              <Scale size={11} style={{ verticalAlign: "middle" }} /> {`${product.weightKg} kg`}
+              <Scale size={11} style={{ verticalAlign: "middle" }} /> {unitPref === "lb" ? `${(product.weightKg * 2.20462).toFixed(2)} lb` : `${product.weightKg} kg`}
             </div>
           )}
           {(product.category === "groceries" || product.category === "pharmacies") && (
@@ -5024,7 +5024,7 @@ const COMMUNITY_SEED = {
     { author: "Tobi J.", role: "Customer", time: "9:02 AM", text: "The points redemption on my last order felt really generous, nice touch." },
   ],
   all: [
-    { author: "Medra Team", role: "Official", time: "9:05 AM", text: "Reminder: peak delivery hours today run 6-10am and 4-8pm as usual." },
+    { author: "Medra Team", role: "Official", time: "9:05 AM", text: "Reminder: peak delivery hours today run 6-10am, 12-2pm and 4-9pm as usual." },
     { author: "Northside Espresso Bar", role: "Seller", time: "8:35 AM", text: "Thanks for the shoutout, Blessing! Fresh batch goes out at 9." },
     { author: "John Rider", role: "Rider", time: "9:00 AM", text: "Roads are clear across Lekki this morning, should be fast deliveries today." },
     { author: "Priya M.", role: "Admin", time: "9:10 AM", text: "Good morning all! Let us know here if anything needs our attention." },
@@ -6717,9 +6717,10 @@ function SettingsScreen({ onOpenThemes, showMyPhoto, setShowMyPhoto, onReplayTou
           <div className="flag-row"><Clock size={15} /><div className="ti-mid"><div className="card-name">Switch automatically by time of day</div><div className="muted">Dark from 7pm to 7am, light the rest of the day -- overrides the manual toggle above</div></div>
             <button className={`toggle-mini ${darkModeAuto ? "on" : ""}`} onClick={() => setDarkModeAuto((a) => !a)}><span /></button>
           </div>
-          <div className="flag-row"><Scale size={15} /><div className="ti-mid"><div className="card-name">Measurement units</div><div className="muted">Medra uses kilograms and kilometres. Cooking temperatures stay in °F.</div></div>
+          <div className="flag-row"><Scale size={15} /><div className="ti-mid"><div className="card-name">Measurement units</div><div className="muted">Defaults to kilograms. Change it any time, just for you. Cooking temperatures stay in °F.</div></div>
             <div style={{ display: "flex", gap: 4 }}>
-              <button className={`ghost-btn-sm ${unitPref === "kg" ? "active" : ""}`} style={unitPref === "kg" ? { background: "#F3EEFF", border: "1px solid var(--purple)" } : undefined} onClick={() => setUnitPref("kg")}>kg / km</button>
+              <button className={`ghost-btn-sm ${unitPref === "kg" ? "active" : ""}`} style={unitPref === "kg" ? { background: "#F3EEFF", border: "1px solid var(--purple)" } : undefined} onClick={() => setUnitPref("kg")}>kg</button>
+              <button className={`ghost-btn-sm ${unitPref === "lb" ? "active" : ""}`} style={unitPref === "lb" ? { background: "#F3EEFF", border: "1px solid var(--purple)" } : undefined} onClick={() => setUnitPref("lb")}>lb</button>
             </div>
           </div>
           <div className="flag-row"><Camera size={15} /><div className="ti-mid"><div className="card-name">Show my photo on my birthday</div><div className="muted">Let other customers see your photo when it's your turn to be the celebrant</div></div>

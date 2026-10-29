@@ -13,12 +13,12 @@ const money = (n) => `₦${Math.round(n).toLocaleString("en-NG")}`;
 /* ------------------------------------------------------------
    PLATFORM ECONOMICS -- delivery fee split.
    Platform takes 15% of the delivery fee at normal hours, 10%
-   during peak hours (6-10am and 4-8pm) -- rider keeps the rest.
+   during peak hours (6-10am, 12-2pm and 4-9pm) -- rider keeps the rest.
    ------------------------------------------------------------ */
 const DELIVERY_COMMISSION_NORMAL = 0.15;
 const FUEL_COST_PER_KM = 55;
 const DELIVERY_COMMISSION_PEAK = 0.10;
-const PEAK_WINDOWS = [[6, 10], [16, 20]]; // Lagos rush hours
+const PEAK_WINDOWS = [[6, 10], [12, 14], [16, 21]]; // morning rush, lunch, evening rush
 function isPeakHour(date = new Date()) {
   const h = date.getHours();
   return PEAK_WINDOWS.some(([start, end]) => h >= start && h < end);
@@ -608,8 +608,8 @@ function BusyZonesScreen({ newOrders, favoriteZones, onToggleFavorite, vehicleTy
         <div className="muted small" style={{ marginBottom: 12 }}>Based on historical order patterns across all zones -- separate from the live snapshot above.</div>
         {(() => {
           const TIME_BLOCKS = [
-            { label: "Morning rush (6-10am)", v: 85 }, { label: "Midday (10am-4pm)", v: 50 },
-            { label: "Evening rush (4-8pm)", v: 95 }, { label: "Night (8pm-12am)", v: 55 },
+            { label: "Morning rush (6-10am)", v: 85 }, { label: "Late morning (10am-12pm)", v: 40 }, { label: "Lunch (12-2pm)", v: 78 },
+            { label: "Afternoon (2-4pm)", v: 45 }, { label: "Evening rush (4-9pm)", v: 95 }, { label: "Night (9pm-12am)", v: 50 },
           ];
           const max = Math.max(...TIME_BLOCKS.map((b) => b.v));
           const currentHour = new Date().getHours();
@@ -1259,7 +1259,7 @@ function EarningsScreen({ todayEarnings, withdrawals, submitWithdrawal, teleheal
       </div>
       <div className="panel enter">
         <div className="panel-title">How your payout is calculated</div>
-        <div className="muted">You see your exact payout before accepting every delivery -- no surprises. Payouts are higher during peak hours (6-10am and 4-8pm).</div>
+        <div className="muted">You see your exact payout before accepting every delivery -- no surprises. Payouts are higher during peak hours (6-10am, 12-2pm and 4-9pm).</div>
       </div>
       <div className="panel enter">
         <div className="panel-title">Recent trips & transactions</div>
@@ -1695,7 +1695,7 @@ const COMMUNITY_SEED = {
     { author: "Marcus T.", role: "Rider", time: "9:20 AM", text: "Peak hour bonus really adds up if you push through the morning rush." },
   ],
   all: [
-    { author: "Medra Team", role: "Official", time: "9:05 AM", text: "Reminder: peak delivery hours today run 6-10am and 4-8pm as usual." },
+    { author: "Medra Team", role: "Official", time: "9:05 AM", text: "Reminder: peak delivery hours today run 6-10am, 12-2pm and 4-9pm as usual." },
     { author: "Northside Espresso Bar", role: "Seller", time: "8:35 AM", text: "Thanks for the patience out there this morning, riders!" },
     { author: "Amara O.", role: "Customer", time: "8:50 AM", text: "Shoutout to my rider this morning, super fast and friendly!" },
     { author: "Priya M.", role: "Admin", time: "9:10 AM", text: "Good morning all! Let us know here if anything needs our attention." },
@@ -1794,7 +1794,7 @@ function draftRiderAIResponse(input, { todayEarnings, todayOrders }) {
     const peak = isPeakHour();
     return peak
       ? { text: `You're in a peak window right now -- it runs until ${peakEndsAt()}. Your payout per delivery is higher right now.` }
-      : { text: "It's not peak hours right now. Peak windows run 6-10am and 4-8pm daily, when your payout per delivery is higher." };
+      : { text: "It's not peak hours right now. Peak windows run 6-10am, 12-2pm and 4-9pm daily, when your payout per delivery is higher." };
   }
   if (t.includes("badge") || t.includes("streak") || t.includes("century")) {
     const unearned = RIDER_BADGES.filter((b) => !b.earned);

@@ -1656,7 +1656,7 @@ const COMMUNITY_SEED = {
     { author: "Ceramic & Co.", role: "Seller", time: "9:20 AM", text: "Bulk upload for products saved me hours today, great feature." },
   ],
   all: [
-    { author: "Medra Team", role: "Official", time: "9:05 AM", text: "Reminder: peak delivery hours today run 6-10am and 4-8pm as usual." },
+    { author: "Medra Team", role: "Official", time: "9:05 AM", text: "Reminder: peak delivery hours today run 6-10am, 12-2pm and 4-9pm as usual." },
     { author: "John Rider", role: "Rider", time: "8:55 AM", text: "Roads are clear across Lekki this morning, should be fast deliveries today." },
     { author: "Amara O.", role: "Customer", time: "9:00 AM", text: "Love being able to compare sellers side by side on one product!" },
     { author: "Priya M.", role: "Admin", time: "9:10 AM", text: "Good morning all! Let us know here if anything needs our attention." },

@@ -27,10 +27,10 @@ const money = (n) => `₦${Math.round(n).toLocaleString("en-NG")}`;
    PLATFORM ECONOMICS -- shared with the customer/seller/rider apps.
    Product commission: 10% added on top of every seller-listed price.
    Delivery commission: 15% of the delivery fee at normal hours,
-   10% during peak hours (6-10am and 4-8pm) -- rider keeps the rest.
+   10% during peak hours (6-10am, 12-2pm and 4-9pm) -- rider keeps the rest.
    ------------------------------------------------------------ */
 const PRODUCT_COMMISSION_RATE = 0.10;
-const PEAK_WINDOWS = [[6, 10], [16, 20]]; // Lagos rush hours
+const PEAK_WINDOWS = [[6, 10], [12, 14], [16, 21]]; // morning rush, lunch, evening rush
 function isPeakHour(date = new Date()) {
   const h = date.getHours();
   return PEAK_WINDOWS.some(([start, end]) => h >= start && h < end);
@@ -1336,7 +1336,7 @@ const STAFF_CHANGELOG = [
   { date: "Aug 21, 2026", tag: "Feature", title: "Reports & Moderation is now a working queue", desc: "Flagged reviews and listings can now be dismissed or removed directly, instead of just viewed." },
   { date: "Aug 20, 2026", tag: "Fix", title: "Fixed inconsistent sidebar badge counts", desc: "Support Tickets, Live Chat, and Notifications badges now match the number of items actually in each queue." },
   { date: "Aug 20, 2026", tag: "Feature", title: "View-As now has an audit trail", desc: "Every use of View-As is logged with actor, target, and timestamp -- visible from the View-As banner." },
-  { date: "Aug 19, 2026", tag: "Policy", title: "Delivery commission during peak hours confirmed at 10%", desc: "Down from the standard 15% during 6-10am and 4-8pm, to keep riders incentivized during high-demand windows." },
+  { date: "Aug 19, 2026", tag: "Policy", title: "Delivery commission during peak hours confirmed at 10%", desc: "Down from the standard 15% during 6-10am, 12-2pm and 4-9pm, to keep riders incentivized during high-demand windows." },
 ];
 
 const FEED_FILTERS = ["All", "Product Updates", "Announcements", "Broadcasts"];
@@ -1973,7 +1973,7 @@ const COMMUNITY_SEED = {
     { author: "Jordan B.", role: "Admin", time: "9:20 AM", text: "The View-As audit log has been really handy for tracing support cases." },
   ],
   all: [
-    { author: "Medra Team", role: "Official", time: "9:00 AM", text: "Reminder: peak delivery hours today run 6-10am and 4-8pm as usual." },
+    { author: "Medra Team", role: "Official", time: "9:00 AM", text: "Reminder: peak delivery hours today run 6-10am, 12-2pm and 4-9pm as usual." },
     { author: "Northside Espresso Bar", role: "Seller", time: "8:25 AM", text: "Good morning everyone! Hope it's a great day for everyone on the platform." },
     { author: "John Rider", role: "Rider", time: "8:40 AM", text: "Roads are clear across Lekki this morning, should be fast deliveries today." },
     { author: "Amara O.", role: "Customer", time: "9:10 AM", text: "Just wanted to say support sorted my issue out really fast, thank you!" },
@@ -2918,7 +2918,7 @@ function CommissionEngineSection() {
           </div>
         </div>
         <div className="field" style={{ marginBottom: 16 }}>
-          <span>Delivery split -- peak hours (6-10am, 4-8pm)</span>
+          <span>Delivery split -- peak hours (6-10am, 12-2pm, 4-9pm)</span>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span className="muted small">Platform</span><input type="number" min="0" max="100" style={{ width: 70 }} value={peakPlatform} onChange={(e) => setPeakPlatform(Math.max(0, Math.min(100, Number(e.target.value) || 0)))} /><span className="muted">%</span>
             <span className="muted small" style={{ marginLeft: 12 }}>Rider</span><span className="mono">{100 - peakPlatform}%</span>

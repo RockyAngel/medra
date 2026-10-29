@@ -21,7 +21,7 @@ const money = (n) => `₦${Math.round(n).toLocaleString("en-NG")}`;
    PLATFORM ECONOMICS -- shared with the customer/seller/rider apps.
    Product commission: 10% added on top of every seller-listed price.
    Delivery commission: 15% of the delivery fee at normal hours,
-   10% during peak hours (6-10am and 4-8pm) -- rider keeps the rest.
+   10% during peak hours (6-10am, 12-2pm and 4-9pm) -- rider keeps the rest.
    ------------------------------------------------------------ */
 const PRODUCT_COMMISSION_RATE = 0.10;
 const DELIVERY_COMMISSION_NORMAL = 0.15;
@@ -203,7 +203,7 @@ const GENERIC_CONFIG = {
   customers: { type: "table", title: "Customers", cols: ["Name", "Email", "Orders", "Joined"], rows: [["Jordan Blake", "jordan@example.com", 34, "2024"], ["Priya Menon", "priya@example.com", 21, "2024"], ["Devon King", "devon@example.com", 12, "2025"]] },
   categories: { type: "list", title: "Categories", items: [["Electronics", "312 products"], ["Home & Kitchen", "540 products"], ["Grocery", "890 products"], ["Fashion", "410 products"]] },
   sos: { type: "table", title: "SOS & Safety", cols: ["Rider", "Location", "Triggered", "Status"], rows: [["Marcus T.", "Lekki Phase 1", "4 min ago", "pending"], ["Priya S.", "Victoria Island", "22 min ago", "pending"], ["John Rider", "Yaba", "1 hr ago", "resolved"]] },
-  commissions: { type: "stats", title: "Commissions", stats: [["Product commission", "10% added to every seller-listed price"], ["Delivery commission (normal hours)", "15% of delivery fee"], ["Delivery commission (peak hours)", "10% of delivery fee -- 6-10am & 4-8pm"]] },
+  commissions: { type: "stats", title: "Commissions", stats: [["Product commission", "10% added to every seller-listed price"], ["Delivery commission (normal hours)", "15% of delivery fee"], ["Delivery commission (peak hours)", "10% of delivery fee -- 6-10am, 12-2pm & 4-9pm"]] },
 };
 
 /* ============================================================
@@ -2303,7 +2303,7 @@ const COMMUNITY_SEED = {
     { author: "Jordan B.", role: "Admin", time: "9:20 AM", text: "The View-As audit log has been really handy for tracing support cases." },
   ],
   all: [
-    { author: "Medra Team", role: "Official", time: "9:00 AM", text: "Reminder: peak delivery hours today run 6-10am and 4-8pm as usual." },
+    { author: "Medra Team", role: "Official", time: "9:00 AM", text: "Reminder: peak delivery hours today run 6-10am, 12-2pm and 4-9pm as usual." },
     { author: "Northside Espresso Bar", role: "Seller", time: "8:25 AM", text: "Good morning everyone! Hope it's a great day for everyone on the platform." },
     { author: "John Rider", role: "Rider", time: "8:40 AM", text: "Roads are clear across Lekki this morning, should be fast deliveries today." },
     { author: "Amara O.", role: "Customer", time: "9:10 AM", text: "Just wanted to say support sorted my issue out really fast, thank you!" },
