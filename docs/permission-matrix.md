@@ -93,3 +93,12 @@ ask, can't execute · Limited = partial/redacted access · — = no access
 | Super Admin | No |
 
 Riders only see orders that fit their vehicle (bicycle: Small; motorbike: up to Medium; keke and car: up to Large; van: all).
+
+
+## Verification decisions
+
+| Check | Super Admin | Admin | Support |
+|---|---|---|---|
+| NIN, BVN, licence, vehicle papers, guarantor, CAC, TIN, NAFDAC, MDCN, PCN, payout account name, transfer proof | Approve / ask for info / reject with reason | View status only | No access |
+| Regulatory register | Edit | No access | No access |
+| City delivery settings, rain surcharge, restricted zones | Edit | Zone coverage as before; no fee or rain settings | No access |

@@ -2352,7 +2352,7 @@ function SellerHelpScreen({ onNavigate }) {
   );
 }
 
-const NIGERIAN_BANKS = ["Access Bank", "GTBank", "First Bank", "Zenith Bank", "UBA", "Kuda", "Opay", "Moniepoint"];
+const NIGERIAN_BANKS = ["Access Bank", "GTBank", "First Bank", "Zenith Bank", "UBA", "Kuda", "Opay", "Moniepoint", "Palmpay", "Wema Bank", "Sterling Bank", "Fidelity Bank", "Stanbic IBTC", "FCMB", "Union Bank", "Polaris Bank", "Ecobank", "Keystone Bank", "Unity Bank", "Providus Bank", "Jaiz Bank", "Standard Chartered", "Citibank"];
 
 function SellerBankAccountModal({ current, onClose, onSave }) {
   const [bank, setBank] = useState(current?.bank || NIGERIAN_BANKS[0]);
@@ -2372,6 +2372,7 @@ function SellerBankAccountModal({ current, onClose, onSave }) {
         </div>
         <div className="field" style={{ marginBottom: 10 }}><span>Account number</span><input type="text" inputMode="numeric" maxLength={10} value={accountNumber} onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ""))} placeholder="10-digit account number" /></div>
         <div className="field" style={{ marginBottom: 16 }}><span>Account holder name</span><input type="text" value={accountName} onChange={(e) => setAccountName(e.target.value)} placeholder="Must match your bank account" /></div>
+        {accountNumber.length === 10 && accountName.trim() && <div className="muted small" style={{ marginBottom: 12 }}>Name check: Super Admin confirms this name matches your BVN before your first payout. Payouts stay on hold until then.</div>}
         <button className="primary-btn-sm wide" disabled={!valid} onClick={() => { onSave({ bank, last4: accountNumber.slice(-4), accountName }); onClose(); }}>Save payout account</button>
       </div>
     </div>
@@ -2626,12 +2627,29 @@ function IdFields({ nin, setNin, bvn, setBvn }) {
   );
 }
 
+function SellerDocFields({ docs, setDocs }) {
+  const up = (k) => (e) => setDocs((d) => ({ ...d, [k]: e.target.value }));
+  return (
+    <>
+      <label className="field"><span>What kind of seller are you?</span>
+        <select className="sort-select" value={docs.kind} onChange={up("kind")}>
+          <option value="registered">Registered business</option><option value="trader">Small trader or market seller</option>
+        </select>
+      </label>
+      <label className="field"><span>CAC (RC) number{docs.kind === "registered" ? "" : " -- optional"}</span><input type="text" value={docs.cac} onChange={up("cac")} placeholder="RC 1234567" required={docs.kind === "registered"} /></label>
+      <label className="field"><span>TIN (tax number) -- optional</span><input type="text" value={docs.tin} onChange={up("tin")} /></label>
+      <label className="field"><span>NAFDAC number -- needed for packaged food, drinks and cosmetics; pharmacies also give their PCN premises licence</span><input type="text" value={docs.nafdac} onChange={up("nafdac")} /></label>
+      <div className="muted small">Super Admin double-checks your NIN, BVN and documents before your store goes live.</div>
+    </>
+  );
+}
 function LoginScreen({ onLogin }) {
   const [mode, setMode] = useState("signin");
   const [loading, setLoading] = useState(false);
   const [nin, setNin] = useState("");
   const [bvn, setBvn] = useState("");
-  const idsOk = mode !== "signup" || idFieldsValid(nin, bvn);
+  const [docs, setDocs] = useState({ kind: "registered", cac: "", tin: "", nafdac: "" });
+  const idsOk = mode !== "signup" || (idFieldsValid(nin, bvn) && (docs.kind === "trader" || docs.cac.trim()));
   const submit = (e) => { e.preventDefault(); if (!idsOk) return; setLoading(true); setTimeout(() => { setLoading(false); onLogin(); }, 700); };
   return (
     <div className="medra-root">
@@ -2652,6 +2670,7 @@ function LoginScreen({ onLogin }) {
             <label className="field"><span>Email</span><input type="email" defaultValue="demo@medra.com" placeholder="you@example.com" required /></label>
             <label className="field"><span>Password</span><input type="password" defaultValue="demo1234" placeholder="********" required /></label>
             {mode === "signup" && <IdFields nin={nin} setNin={setNin} bvn={bvn} setBvn={setBvn} />}
+            {mode === "signup" && <SellerDocFields docs={docs} setDocs={setDocs} />}
             <button className={`primary-btn wide ${loading ? "loading" : ""}`} type="submit" disabled={loading || !idsOk}>{loading ? <span className="spinner" /> : mode === "signin" ? "Sign in" : "Submit application"}</button>
           </form>
         </div>

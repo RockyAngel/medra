@@ -1660,44 +1660,37 @@ function FinancialTransactionsSection({ initialTab }) {
   );
 }
 
+const VERIFICATION_CHECKS = ["NIN", "BVN", "Driver's licence", "Vehicle papers", "Guarantor", "CAC / RC number", "TIN", "NAFDAC", "MDCN licence", "PCN licence", "Payout account name", "Transfer proof"];
+const VERIFICATION_SEED = [
+  { id: "V101", applicant: "Devon K.", role: "Rider", check: "NIN", detail: "NIN *******4821", note: "", submitted: "1 day ago", status: "pending" },
+  { id: "V102", applicant: "Devon K.", role: "Rider", check: "BVN", detail: "BVN *******7390", note: "Name on BVN differs from NIN (middle name)", submitted: "1 day ago", status: "pending" },
+  { id: "V103", applicant: "Devon K.", role: "Rider", check: "Driver's licence", detail: "Licence photo uploaded, expires 03/2028", note: "", submitted: "1 day ago", status: "pending" },
+  { id: "V104", applicant: "Devon K.", role: "Rider", check: "Guarantor", detail: "Ngozi K. (sister), 0803 *** 4412", note: "Verification call not done yet", submitted: "1 day ago", status: "pending" },
+  { id: "V105", applicant: "Bright Pharmacy", role: "Seller", check: "CAC / RC number", detail: "RC 1458XXX", note: "", submitted: "2 days ago", status: "pending" },
+  { id: "V106", applicant: "Bright Pharmacy", role: "Seller", check: "PCN licence", detail: "Premises licence photo uploaded", note: "", submitted: "2 days ago", status: "pending" },
+  { id: "V107", applicant: "Bright Pharmacy", role: "Seller", check: "NAFDAC", detail: "3 product registrations listed", note: "One number looks reused from another seller", submitted: "2 days ago", status: "pending" },
+  { id: "V108", applicant: "Mama Put Kitchen", role: "Seller", check: "TIN", detail: "TIN 2345XXXX-0001", note: "", submitted: "4 days ago", status: "info_requested" },
+  { id: "V109", applicant: "Casey W.", role: "Support staff", check: "NIN", detail: "NIN *******4821", note: "", submitted: "6 days ago", status: "verified" },
+  { id: "V110", applicant: "Dr. Adaeze O.", role: "Doctor", check: "MDCN licence", detail: "MDCN number on file", note: "Check the register before showing a verified badge", submitted: "3 days ago", status: "pending" },
+  { id: "V111", applicant: "Kemi A.", role: "Rider", check: "Payout account name", detail: "GTBank ****2210 -- name check: KEMI ADEBAYO", note: "Matches BVN name", submitted: "5 hours ago", status: "pending" },
+  { id: "V112", applicant: "Order MD28420", role: "Customer", check: "Transfer proof", detail: "Bank transfer screenshot", note: "Same image used on another order", submitted: "20 mins ago", status: "pending" },
+  { id: "V113", applicant: "LifeCare Store", role: "Seller", check: "CAC / RC number", detail: "RC 1204XXX", note: "", submitted: "3 days ago", status: "verified" },
+];
+const VERIFICATION_PILL = { pending: "prep", info_requested: "route", verified: "done", rejected: "delay" };
+const VERIFICATION_LABEL = { pending: "Pending", info_requested: "More info asked", verified: "Verified", rejected: "Rejected" };
 function KycVerificationsSection() {
-  const [apps, setApps] = useState(KYC_APPLICATIONS_SEED);
-  const [selected, setSelected] = useState(new Set());
-  const decide = (id, status) => setApps((a) => a.map((x) => x.id === id ? { ...x, status } : x));
-  const toggleSel = (id) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  const pendingIds = apps.filter((a) => a.status === "pending").map((a) => a.id);
-  const toggleAll = () => setSelected((s) => (s.size === pendingIds.length ? new Set() : new Set(pendingIds)));
-  const batchDecide = (status) => { setApps((a) => a.map((x) => selected.has(x.id) ? { ...x, status } : x)); setSelected(new Set()); };
   return (
     <div className="section-pad">
       <div className="panel enter">
-        <div className="panel-title">KYC & Verifications</div>
-        {selected.size > 0 && (
-          <div className="cat-top" style={{ marginBottom: 10, gap: 8 }}>
-            <span className="muted small">{selected.size} selected</span>
-            <button className="primary-btn-sm" onClick={() => batchDecide("verified")}>Approve all</button>
-            <button className="ghost-btn-sm deny" onClick={() => confirmAction({ title: "Reject all selected?", message: "Every selected application will be rejected and the applicants notified.", confirmLabel: "Reject all" }, () => batchDecide("rejected"))}>Reject all</button>
-            <button className="ghost-btn-sm" onClick={() => setSelected(new Set())}>Clear</button>
-          </div>
-        )}
+        <div className="panel-title-row"><div className="panel-title">KYC & Verifications</div><span className="status-pill route">View only</span></div>
+        <div className="muted small" style={{ marginBottom: 10 }}>NIN, BVN, driver's licences, vehicle papers, guarantors, CAC/TIN/NAFDAC, MDCN/PCN licences, payout account names and suspicious transfer proofs are double-checked by Super Admin. You can follow the status here; if an applicant asks, tell them it is with Super Admin.</div>
         <table className="admin-table">
-          <thead><tr><th><input type="checkbox" checked={pendingIds.length > 0 && selected.size === pendingIds.length} onChange={toggleAll} disabled={pendingIds.length === 0} /></th><th>Applicant</th><th>Type</th><th>Document</th><th>Submitted</th><th>Status</th><th /></tr></thead>
+          <thead><tr><th>Applicant</th><th>Role</th><th>Check</th><th>Submitted</th><th>Status</th></tr></thead>
           <tbody>
-            {apps.map((a) => (
+            {VERIFICATION_SEED.map((a) => (
               <tr key={a.id}>
-                <td>{a.status === "pending" && <input type="checkbox" checked={selected.has(a.id)} onChange={() => toggleSel(a.id)} />}</td>
-                <td className="card-name">{a.applicant}</td><td>{a.type}</td><td className="muted small">{a.document}</td><td className="muted small">{a.submitted}</td>
-                <td><span className={`status-pill ${a.status === "verified" ? "done" : a.status === "rejected" ? "delay" : "prep"}`}>{a.status}</span></td>
-                <td style={{ display: "flex", gap: 6 }}>
-                  {a.status === "pending" ? (
-                    <>
-                      <button className="ghost-btn-sm" onClick={() => decide(a.id, "verified")}>Approve</button>
-                      <button className="ghost-btn-sm deny" onClick={() => confirmAction({ title: "Reject this application?", message: "The applicant will be notified.", confirmLabel: "Reject" }, () => decide(a.id, "rejected"))}>Reject</button>
-                    </>
-                  ) : (
-                    <button className="ghost-btn-sm" onClick={() => decide(a.id, "pending")}>Reopen</button>
-                  )}
-                </td>
+                <td className="card-name">{a.applicant}</td><td>{a.role}</td><td>{a.check}</td><td className="muted small">{a.submitted}</td>
+                <td><span className={`status-pill ${VERIFICATION_PILL[a.status]}`}>{VERIFICATION_LABEL[a.status]}</span></td>
               </tr>
             ))}
           </tbody>

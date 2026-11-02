@@ -514,7 +514,7 @@ const NAV_SECTIONS = [
     { key: "riders", label: "Riders / Drivers", icon: Truck },
     { key: "products", label: "Products", icon: Package },
     { key: "orders", label: "Orders", icon: ClipboardList },
-    { key: "kyc", label: "KYC & Verifications", icon: BadgeCheck },
+    { key: "kyc", label: "Verification Queue", icon: BadgeCheck },
   ]},
   { label: "Finance", items: [
     { key: "payments", label: "Financial Transactions", icon: CreditCard },
@@ -559,6 +559,7 @@ const NAV_SECTIONS = [
     { key: "delivery-settings", label: "Delivery Settings", icon: Truck },
     { key: "app-settings", label: "App Settings", icon: SlidersHorizontal },
     { key: "data-retention", label: "Data Retention", icon: Database },
+    { key: "regulatory", label: "Regulatory Register", icon: ScrollText },
     { key: "platform-tools", label: "Platform Tools", icon: Wrench },
     { key: "platform-logs", label: "Audit Center", icon: Activity },
     { key: "system-health", label: "System Health", icon: Server },
@@ -1112,40 +1113,100 @@ function BulkBar({ count, onApprove, onFlag, onClear, approveLabel = "Approve", 
   );
 }
 
-const KYC_APPLICATIONS_SEED = [
-  { id: "KYC1", applicant: "Bright Pharmacy", type: "Seller", document: "Business license", submitted: "2 days ago", status: "pending" },
-  { id: "KYC2", applicant: "LifeCare Store", type: "Seller", document: "Business license", submitted: "3 days ago", status: "verified" },
-  { id: "KYC3", applicant: "Devon K.", type: "Rider", document: "Driver's license", submitted: "1 day ago", status: "pending" },
+const VERIFICATION_CHECKS = ["NIN", "BVN", "Driver's licence", "Vehicle papers", "Guarantor", "CAC / RC number", "TIN", "NAFDAC", "MDCN licence", "PCN licence", "Payout account name", "Transfer proof"];
+const VERIFICATION_SEED = [
+  { id: "V101", applicant: "Devon K.", role: "Rider", check: "NIN", detail: "NIN *******4821", note: "", submitted: "1 day ago", status: "pending" },
+  { id: "V102", applicant: "Devon K.", role: "Rider", check: "BVN", detail: "BVN *******7390", note: "Name on BVN differs from NIN (middle name)", submitted: "1 day ago", status: "pending" },
+  { id: "V103", applicant: "Devon K.", role: "Rider", check: "Driver's licence", detail: "Licence photo uploaded, expires 03/2028", note: "", submitted: "1 day ago", status: "pending" },
+  { id: "V104", applicant: "Devon K.", role: "Rider", check: "Guarantor", detail: "Ngozi K. (sister), 0803 *** 4412", note: "Verification call not done yet", submitted: "1 day ago", status: "pending" },
+  { id: "V105", applicant: "Bright Pharmacy", role: "Seller", check: "CAC / RC number", detail: "RC 1458XXX", note: "", submitted: "2 days ago", status: "pending" },
+  { id: "V106", applicant: "Bright Pharmacy", role: "Seller", check: "PCN licence", detail: "Premises licence photo uploaded", note: "", submitted: "2 days ago", status: "pending" },
+  { id: "V107", applicant: "Bright Pharmacy", role: "Seller", check: "NAFDAC", detail: "3 product registrations listed", note: "One number looks reused from another seller", submitted: "2 days ago", status: "pending" },
+  { id: "V108", applicant: "Mama Put Kitchen", role: "Seller", check: "TIN", detail: "TIN 2345XXXX-0001", note: "", submitted: "4 days ago", status: "info_requested" },
+  { id: "V109", applicant: "Casey W.", role: "Support staff", check: "NIN", detail: "NIN *******4821", note: "", submitted: "6 days ago", status: "verified" },
+  { id: "V110", applicant: "Dr. Adaeze O.", role: "Doctor", check: "MDCN licence", detail: "MDCN number on file", note: "Check the register before showing a verified badge", submitted: "3 days ago", status: "pending" },
+  { id: "V111", applicant: "Kemi A.", role: "Rider", check: "Payout account name", detail: "GTBank ****2210 -- name check: KEMI ADEBAYO", note: "Matches BVN name", submitted: "5 hours ago", status: "pending" },
+  { id: "V112", applicant: "Order MD28420", role: "Customer", check: "Transfer proof", detail: "Bank transfer screenshot", note: "Same image used on another order", submitted: "20 mins ago", status: "pending" },
+  { id: "V113", applicant: "LifeCare Store", role: "Seller", check: "CAC / RC number", detail: "RC 1204XXX", note: "", submitted: "3 days ago", status: "verified" },
 ];
+const VERIFICATION_PILL = { pending: "prep", info_requested: "route", verified: "done", rejected: "delay" };
+const VERIFICATION_LABEL = { pending: "Pending", info_requested: "More info asked", verified: "Verified", rejected: "Rejected" };
 function KycVerificationsSection() {
-  const [apps, setApps] = useState(KYC_APPLICATIONS_SEED);
-  const decide = (id, status) => setApps((a) => a.map((x) => x.id === id ? { ...x, status } : x));
+  const [items, setItems] = useState(VERIFICATION_SEED);
+  const [checkFilter, setCheckFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("pending");
+  const [query, setQuery] = useState("");
+  const [rejecting, setRejecting] = useState(null);
+  const [reason, setReason] = useState("Document unclear");
+  const [log, setLog] = useState([]);
+  const decide = (it, status, why) => {
+    setItems((a) => a.map((x) => x.id === it.id ? { ...x, status } : x));
+    setLog((l) => [{ id: it.id, text: `${VERIFICATION_LABEL[status]} -- ${it.applicant} (${it.check})${why ? `: ${why}` : ""}`, at: "just now" }, ...l].slice(0, 6));
+  };
+  const shown = items.filter((x) => (checkFilter === "all" || x.check === checkFilter) && (statusFilter === "all" || x.status === statusFilter) && (!query || (x.applicant + x.detail).toLowerCase().includes(query.toLowerCase())));
+  const count = (st) => items.filter((x) => x.status === st).length;
   return (
     <div className="section-pad">
       <div className="panel enter">
-        <div className="panel-title">KYC & Verifications</div>
+        <div className="panel-title-row"><div className="panel-title">Verification Queue</div><span className="muted small">{count("pending")} pending -- {items.filter((x) => x.note && x.status === "pending").length} flagged</span></div>
+        <div className="muted small" style={{ marginBottom: 10 }}>Everything that needs a second pair of eyes lands here: NIN, BVN, driver's licences, vehicle papers, guarantors, CAC/TIN/NAFDAC, MDCN and PCN licences, payout account names and suspicious transfer proofs. Admin and Support can see status but cannot decide.</div>
+        <PrototypeNote>numbers are masked and nothing is checked against NIMC, banks, CAC or the regulators yet. A real identity provider replaces the manual look-up later.</PrototypeNote>
+        <div className="cat-top" style={{ gap: 8, margin: "10px 0", flexWrap: "wrap" }}>
+          <input type="text" placeholder="Search applicant or detail" value={query} onChange={(e) => setQuery(e.target.value)} style={{ minWidth: 180 }} />
+          <select className="sort-select" value={checkFilter} onChange={(e) => setCheckFilter(e.target.value)}>
+            <option value="all">All checks</option>{VERIFICATION_CHECKS.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select className="sort-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="all">All statuses</option>{Object.keys(VERIFICATION_LABEL).map((k) => <option key={k} value={k}>{VERIFICATION_LABEL[k]}</option>)}
+          </select>
+        </div>
         <table className="admin-table">
-          <thead><tr><th>Applicant</th><th>Type</th><th>Document</th><th>Submitted</th><th>Status</th><th /></tr></thead>
+          <thead><tr><th>Applicant</th><th>Role</th><th>Check</th><th>Detail</th><th>Submitted</th><th>Status</th><th /></tr></thead>
           <tbody>
-            {apps.map((a) => (
+            {shown.map((a) => (
               <tr key={a.id}>
-                <td className="card-name">{a.applicant}</td><td>{a.type}</td><td className="muted small">{a.document}</td><td className="muted small">{a.submitted}</td>
-                <td><span className={`status-pill ${a.status === "verified" ? "done" : a.status === "rejected" ? "delay" : "prep"}`}>{a.status}</span></td>
-                <td style={{ display: "flex", gap: 6 }}>
-                  {a.status === "pending" ? (
+                <td className="card-name">{a.applicant}</td><td>{a.role}</td><td>{a.check}</td>
+                <td className="muted small">{a.detail}{a.note && <div style={{ color: "#EA580C" }}><AlertTriangle size={11} style={{ verticalAlign: "middle" }} /> {a.note}</div>}</td>
+                <td className="muted small">{a.submitted}</td>
+                <td><span className={`status-pill ${VERIFICATION_PILL[a.status]}`}>{VERIFICATION_LABEL[a.status]}</span></td>
+                <td style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {(a.status === "pending" || a.status === "info_requested") ? (
                     <>
-                      <button className="ghost-btn-sm" onClick={() => decide(a.id, "verified")}>Approve</button>
-                      <button className="ghost-btn-sm deny" onClick={() => confirmAction({ title: "Reject this application?", message: "The applicant will be notified.", confirmLabel: "Reject" }, () => decide(a.id, "rejected"))}>Reject</button>
+                      <button className="ghost-btn-sm" onClick={() => decide(a, "verified")}>Approve</button>
+                      <button className="ghost-btn-sm" onClick={() => confirmAction({ title: "Ask for more information?", message: `${a.applicant} will be asked to resubmit or explain: ${a.check}.`, confirmLabel: "Ask" }, () => decide(a, "info_requested"))}>Ask for info</button>
+                      <button className="ghost-btn-sm deny" onClick={() => { setReason("Document unclear"); setRejecting(a); }}>Reject</button>
                     </>
                   ) : (
-                    <button className="ghost-btn-sm" onClick={() => decide(a.id, "pending")}>Reopen</button>
+                    <button className="ghost-btn-sm" onClick={() => decide(a, "pending")}>Reopen</button>
                   )}
                 </td>
               </tr>
             ))}
+            {shown.length === 0 && <tr><td colSpan={7} className="muted small">Nothing matches these filters.</td></tr>}
           </tbody>
         </table>
       </div>
+      {log.length > 0 && (
+        <div className="panel enter">
+          <div className="panel-title" style={{ fontSize: 13 }}>Your decisions this session</div>
+          <div className="list-col">{log.map((l, i) => <div key={i} className="muted small">{l.text} -- {l.at}</div>)}</div>
+        </div>
+      )}
+      {rejecting && (
+        <div className="modal-backdrop" onClick={() => setRejecting(null)}>
+          <div className="confirm-modal enter" onClick={(e) => e.stopPropagation()}>
+            <div className="card-name" style={{ fontSize: 16, marginBottom: 6 }}>Reject {rejecting.check} for {rejecting.applicant}?</div>
+            <div className="muted small" style={{ marginBottom: 10 }}>The applicant is told why and can resubmit.</div>
+            <select className="sort-select" value={reason} onChange={(e) => setReason(e.target.value)} style={{ marginBottom: 14 }}>
+              {["Document unclear", "Name does not match", "Number not found", "Expired", "Looks edited or reused", "Other"].map((r) => <option key={r}>{r}</option>)}
+            </select>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button className="ghost-btn-sm" onClick={() => setRejecting(null)}>Cancel</button>
+              <button className="primary-btn-sm" style={{ background: "#DC2626" }} onClick={() => { decide(rejecting, "rejected", reason); setRejecting(null); }}>Reject</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -3151,21 +3212,98 @@ function AppSettingsSection() {
   );
 }
 
+const CITY_DELIVERY_DEFAULTS = {
+  Lagos: { radius: 13, surcharge: 1.3, minFee: 600, baseFee: 500, perKm: 120, fuelPerKm: 55, peak: "6-10am, 12-2pm, 4-9pm", rain: false, rainMult: 1.25, restricted: ["Ikoyi (bike limits -- confirm with the state)", "Victoria Island main roads (bike limits -- confirm with the state)"] },
+  Abuja: { radius: 15, surcharge: 1.25, minFee: 700, baseFee: 600, perKm: 130, fuelPerKm: 55, peak: "7-10am, 12-2pm, 4-8pm", rain: false, rainMult: 1.2, restricted: [] },
+  Kano: { radius: 12, surcharge: 1.2, minFee: 500, baseFee: 400, perKm: 100, fuelPerKm: 55, peak: "7-10am, 12-2pm, 4-8pm", rain: false, rainMult: 1.2, restricted: [] },
+  "Port Harcourt": { radius: 12, surcharge: 1.3, minFee: 600, baseFee: 500, perKm: 120, fuelPerKm: 55, peak: "7-10am, 4-8pm", rain: false, rainMult: 1.3, restricted: [] },
+};
 function DeliverySettingsSection() {
-  const [radius, setRadius] = useState(13);
-  const [surcharge, setSurcharge] = useState(1.3);
-  const [minFee, setMinFee] = useState(600);
+  const [city, setCity] = useState("Lagos");
+  const [cfg, setCfg] = useState(CITY_DELIVERY_DEFAULTS);
+  const [newZone, setNewZone] = useState("");
   const [saved, setSaved] = useState(false);
+  const c = cfg[city];
+  const set = (patch) => setCfg((all) => ({ ...all, [city]: { ...all[city], ...patch } }));
+  const num = (v) => Number(v) || 0;
   const save = () => { setSaved(true); setTimeout(() => setSaved(false), 2000); };
+  // Worked example so Super Admin sees what the numbers mean for a 5 km trip.
+  const example = Math.max(c.minFee, Math.round(c.baseFee + c.perKm * 5));
+  const exampleRiderCost = Math.round(c.fuelPerKm * 5);
   return (
     <div className="section-pad">
       <div className="panel enter">
-        <div className="panel-title">Delivery Settings</div>
-        <PrototypeNote>saving here updates this screen only -- there's no backend yet to actually change customer/seller behavior. This is the config UI ready for that hookup.</PrototypeNote>
-        <div className="field" style={{ marginBottom: 10 }}><span>Default delivery radius (km)</span><input type="number" min="1" value={radius} onChange={(e) => setRadius(Number(e.target.value) || 0)} /></div>
-        <div className="field" style={{ marginBottom: 10 }}><span>Peak hour surcharge (multiplier)</span><input type="number" min="1" step="0.1" value={surcharge} onChange={(e) => setSurcharge(Number(e.target.value) || 1)} /></div>
-        <div className="field" style={{ marginBottom: 16 }}><span>Minimum delivery fee (₦) -- delivery is never free</span><input type="number" min="1" value={minFee} onChange={(e) => setMinFee(Math.max(1, Number(e.target.value) || 1))} /></div>
+        <div className="panel-title-row"><div className="panel-title">Delivery Settings</div>
+          <select className="sort-select" value={city} onChange={(e) => setCity(e.target.value)}>{Object.keys(cfg).map((k) => <option key={k}>{k}</option>)}</select>
+        </div>
+        <PrototypeNote>saving here updates this screen only -- there's no backend yet to actually change customer/seller behavior. This is the config UI ready for that hookup. Each city has its own numbers.</PrototypeNote>
+        <div className="field" style={{ marginBottom: 10 }}><span>Default delivery radius (km)</span><input type="number" min="1" value={c.radius} onChange={(e) => set({ radius: num(e.target.value) })} /></div>
+        <div className="field" style={{ marginBottom: 10 }}><span>Base fee (₦)</span><input type="number" min="0" value={c.baseFee} onChange={(e) => set({ baseFee: num(e.target.value) })} /></div>
+        <div className="field" style={{ marginBottom: 10 }}><span>Fee per km (₦)</span><input type="number" min="0" value={c.perKm} onChange={(e) => set({ perKm: num(e.target.value) })} /></div>
+        <div className="field" style={{ marginBottom: 10 }}><span>Rider fuel cost per km (₦) -- update when fuel prices move</span><input type="number" min="0" value={c.fuelPerKm} onChange={(e) => set({ fuelPerKm: num(e.target.value) })} /></div>
+        <div className="field" style={{ marginBottom: 10 }}><span>Peak hour windows</span><input type="text" value={c.peak} onChange={(e) => set({ peak: e.target.value })} /></div>
+        <div className="field" style={{ marginBottom: 10 }}><span>Peak hour surcharge (multiplier)</span><input type="number" min="1" step="0.1" value={c.surcharge} onChange={(e) => set({ surcharge: Math.max(1, num(e.target.value)) })} /></div>
+        <div className="field" style={{ marginBottom: 16 }}><span>Minimum delivery fee (₦) -- delivery is never free; also keeps short trips above the rider's fuel cost</span><input type="number" min="1" value={c.minFee} onChange={(e) => set({ minFee: Math.max(1, num(e.target.value)) })} /></div>
+        <div className="muted small" style={{ marginBottom: 14 }}>Example: a 5 km trip costs the customer ₦{example.toLocaleString()} before size and peak changes. The rider's fuel for it is about ₦{exampleRiderCost.toLocaleString()}{example < exampleRiderCost * 1.5 ? " -- thin margin, consider raising the fee." : "."}</div>
         <button className="primary-btn-sm" onClick={save}>{saved ? "Saved for this preview" : "Save changes"}</button>
+      </div>
+      <div className="panel enter">
+        <div className="panel-title-row"><div className="panel-title">Rain and flood surcharge</div>
+          <button className={`toggle-mini ${c.rain ? "on" : ""}`} onClick={() => set({ rain: !c.rain })}><span /></button>
+        </div>
+        <div className="muted small" style={{ marginBottom: 10 }}>Switch on for {city} when roads flood or heavy rain slows riders. Customers see "Bad weather -- delivery fee is higher right now".</div>
+        {c.rain && <div className="field"><span>Rain multiplier</span><input type="number" min="1" step="0.05" value={c.rainMult} onChange={(e) => set({ rainMult: Math.max(1, num(e.target.value)) })} /></div>}
+      </div>
+      <div className="panel enter">
+        <div className="panel-title">Restricted zones (motorbikes)</div>
+        <div className="muted small" style={{ marginBottom: 10 }}>Areas where motorbikes may not operate. Orders to these areas only go to car, keke or van riders. Confirm the current rules for each area with the state before relying on this list.</div>
+        <div className="list-col">
+          {c.restricted.length === 0 && <div className="muted small">No restricted zones for {city}.</div>}
+          {c.restricted.map((z) => (
+            <div key={z} className="pending-row"><div className="ti-mid"><div className="card-name">{z}</div></div>
+              <button className="ghost-btn-sm deny" onClick={() => confirmAction({ title: "Remove this zone?", message: "Motorbike riders will see orders in this area again.", confirmLabel: "Remove" }, () => set({ restricted: c.restricted.filter((x) => x !== z) }))}>Remove</button></div>
+          ))}
+        </div>
+        <div className="cat-top" style={{ gap: 8, marginTop: 10 }}>
+          <input type="text" value={newZone} placeholder="Area name, e.g. Marina" onChange={(e) => setNewZone(e.target.value)} />
+          <button className="ghost-btn-sm" disabled={!newZone.trim()} onClick={() => { set({ restricted: [...c.restricted, newZone.trim()] }); setNewZone(""); }}>Add zone</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const REGULATORY_SEED = [
+  { id: "R1", item: "Company registration (CAC)", owner: "Legal", renews: "Not set", status: "Needs details" },
+  { id: "R2", item: "Tax registration (TIN) and VAT", owner: "Finance", renews: "Annual returns", status: "Needs details" },
+  { id: "R3", item: "Data protection registration and officer", owner: "Legal", renews: "Annual", status: "Needs lawyer" },
+  { id: "R4", item: "Consumer protection (FCCPC) registration, including any lending", owner: "Legal", renews: "Annual", status: "Needs lawyer" },
+  { id: "R5", item: "Payment partner agreement (wallet, payouts, transfer matching)", owner: "Finance", renews: "Contract", status: "Needs partner" },
+  { id: "R6", item: "Lottery, prize games and reverse auction approval", owner: "Legal", renews: "Per state", status: "Needs lawyer" },
+  { id: "R7", item: "Pharmacy partners: PCN premises licences", owner: "Compliance", renews: "Annual", status: "Per seller" },
+  { id: "R8", item: "Doctor partners: MDCN annual practising licence", owner: "Compliance", renews: "Annual", status: "Per doctor" },
+  { id: "R9", item: "Food and packaged goods: NAFDAC numbers", owner: "Compliance", renews: "5 years", status: "Per seller" },
+  { id: "R10", item: "Vehicle and rider rules by city (including motorbike limits)", owner: "Operations", renews: "Check quarterly", status: "Needs checking" },
+  { id: "R11", item: "Rider insurance or welfare fund", owner: "Operations", renews: "Annual", status: "Needs partner" },
+];
+function RegulatorySection() {
+  const [rows, setRows] = useState(REGULATORY_SEED);
+  const mark = (id) => setRows((r) => r.map((x) => x.id === id ? { ...x, status: "In place", renews: "Reviewed today" } : x));
+  return (
+    <div className="section-pad">
+      <div className="panel enter">
+        <div className="panel-title">Regulatory register</div>
+        <div className="muted small" style={{ marginBottom: 10 }}>The licences, registrations and partner agreements Medra needs before launch, who owns each one, and when it must be renewed. This is a checklist to confirm with a Nigerian lawyer, not legal advice.</div>
+        <table className="admin-table">
+          <thead><tr><th>Item</th><th>Owner</th><th>Renewal</th><th>Status</th><th /></tr></thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.id}><td className="card-name">{r.item}</td><td>{r.owner}</td><td className="muted small">{r.renews}</td>
+                <td><span className={`status-pill ${r.status === "In place" ? "done" : r.status.startsWith("Needs") ? "delay" : "prep"}`}>{r.status}</span></td>
+                <td>{r.status !== "In place" && <button className="ghost-btn-sm" onClick={() => confirmAction({ title: "Mark as in place?", message: "Only do this once the document or agreement is in hand.", confirmLabel: "Mark in place" }, () => mark(r.id))}>Mark in place</button>}</td></tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
@@ -4133,6 +4271,7 @@ const SECTION_MAP = {
   referral: ReferralSection,
   membership: MembershipPlansSection,
   kyc: KycVerificationsSection,
+  regulatory: RegulatorySection,
   "system-settings": SystemSettingsSection,
   "data-retention": DataRetentionSection,
   categories: CategoriesSection,

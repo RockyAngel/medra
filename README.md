@@ -29,6 +29,10 @@ npm test        # smoke-renders all 8 apps
 - Emergency warning also triggers on Pidgin, Yoruba, Hausa and Igbo phrases (native-speaker review needed)
 - Peak hours are 6-10am, 12-2pm and 4-9pm (morning rush, lunch, evening rush)
 - No USSD, POS-on-delivery or virtual-account payment options
+- Anything needing a second check goes to the Super Admin Verification Queue (NIN, BVN, licences, vehicle papers, guarantors, CAC/TIN/NAFDAC, MDCN/PCN, payout names, transfer proofs); Admin and Support see status only
+- Rider sign-up asks for licence, plate, vehicle and a guarantor; sellers give CAC, TIN and NAFDAC where relevant
+- Per-city delivery settings, rain surcharge and motorbike-restricted zones in Super Admin; Regulatory Register tracks licences and partner agreements
+- Delivery code: the customer reads a 4-digit code to the rider to complete a practice delivery
 - **Order statuses** are one set everywhere: Placed, Preparing, Out for Delivery, Delivered, Cancelled.
 - **Reverse auction:** a losing bid under 150 points forfeits the whole bid; a losing bid of 150 or more pays a 2% entry fee.
 - **Destructive actions** (delete, cancel, reject, suspend, remove) ask for confirmation first.

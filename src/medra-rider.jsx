@@ -4,7 +4,7 @@ import {
   ShieldAlert, Settings, LifeBuoy, LogOut, LayoutDashboard, ArrowUp,
   Check, X, Star, Clock, MapPin, Phone, Navigation, Power, TrendingUp,
   Target, ShieldCheck, Zap, CheckCircle2, RefreshCw, ChevronRight, FileDown, User as UserIcon, Award, HelpCircle, Wrench, Gift, Copy, AlertTriangle, Inbox, Send, Users, Image as ImageIcon, Sparkles, Medal,
-  ArrowRight, Play, Heart, Search, ShoppingCart, Headphones, ShoppingBag, Cross, Shirt, Smartphone, Home as HomeIcon, Utensils, DollarSign, Flame, Menu, BadgeCheck, CircleCheck, Compass, RotateCcw,
+  ArrowRight, Play, Heart, Search, ShoppingCart, Headphones, ShoppingBag, Cross, Shirt, Smartphone, Home as HomeIcon, Utensils, DollarSign, Flame, Menu, BadgeCheck, CircleCheck, Compass, RotateCcw, PhoneCall, MessageSquare,
 } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 
@@ -102,6 +102,7 @@ function vehicleFits(vehicleKey, sizeKey) {
   return (idx < 0 ? 0 : idx) <= vehicleByKey(vehicleKey).maxSize;
 }
 const orderSizeByKey = (k) => ORDER_SIZES.find((s) => s.key === k) || null;
+const deliveryPin = (id) => String(id).replace(/\D/g, "").slice(-4).padStart(4, "0");
 function SizeBadge({ sizeKey, weightKg }) {
   const sz = orderSizeByKey(sizeKey);
   if (!sz) return <span className="status-pill" style={{ background: "#F1F5F9", color: "#64748B" }}>Size not set</span>;
@@ -663,6 +664,7 @@ function DashboardScreen({ hiddenOrders = 0, vehicleType, online, setOnline, new
   const [handoffOpen, setHandoffOpen] = useState(false);
   const [pickupReportOpen, setPickupReportOpen] = useState(false);
   const [deliveryPhoto, setDeliveryPhoto] = useState(null);
+  const [pinEntry, setPinEntry] = useState("");
   const photoRef = useRef(null);
   const handleDeliveryPhoto = (e) => {
     const file = e.target.files?.[0];
@@ -671,7 +673,7 @@ function DashboardScreen({ hiddenOrders = 0, vehicleType, online, setOnline, new
     reader.onload = () => setDeliveryPhoto(reader.result);
     reader.readAsDataURL(file);
   };
-  useEffect(() => { setDeliveryPhoto(null); }, [activeTrip?.id]);
+  useEffect(() => { setDeliveryPhoto(null); setPinEntry(""); }, [activeTrip?.id]);
   if (activeTrip) {
     const stage = STAGES[stageIdx];
     const nextLabel = ["Confirm arrival at pickup", "Confirm items picked up", "Start heading to drop-off", "Confirm arrival at drop-off", "Complete delivery"][stageIdx];
@@ -726,7 +728,20 @@ function DashboardScreen({ hiddenOrders = 0, vehicleType, online, setOnline, new
               <div className="muted small" style={{ marginTop: 4 }}>Kept with this delivery in your own order history for your records.</div>
             </div>
           )}
-          <button className="primary-btn-sm" style={{ marginTop: 16 }} disabled={stageIdx === STAGES.length - 2 && !deliveryPhoto} onClick={onAdvance}>
+          {stageIdx >= 2 && stageIdx < STAGES.length - 1 && (
+            <div className="cat-top" style={{ gap: 8, marginTop: 12 }}>
+              <a className="ghost-btn-sm" href="tel:+2348000000000"><PhoneCall size={13} style={{ verticalAlign: "middle" }} /> Call customer</a>
+              <a className="ghost-btn-sm" href={`https://wa.me/2348000000000?text=${encodeURIComponent("Hello, this is your Medra rider. I am on my way with order " + activeTrip.id + ".")}`} target="_blank" rel="noreferrer"><MessageSquare size={13} style={{ verticalAlign: "middle" }} /> WhatsApp</a>
+              <span className="muted small">The customer's real number stays hidden -- calls go through Medra.</span>
+            </div>
+          )}
+          {stageIdx === STAGES.length - 2 && (
+            <div className="field" style={{ marginTop: 12 }}><span>Customer's 4-digit delivery code</span>
+              <input type="text" inputMode="numeric" maxLength={4} value={pinEntry} onChange={(e) => setPinEntry(e.target.value.replace(/\D/g, ""))} placeholder="Ask the customer for the code" />
+              {pinEntry.length === 4 && pinEntry !== deliveryPin(activeTrip.id) && <span className="muted small" style={{ color: "#DC2626" }}>That code is not right. Ask the customer to check their order screen.</span>}
+            </div>
+          )}
+          <button className="primary-btn-sm" style={{ marginTop: 16 }} disabled={stageIdx === STAGES.length - 2 && (!deliveryPhoto || pinEntry !== deliveryPin(activeTrip.id))} onClick={onAdvance}>
             {stageIdx === STAGES.length - 2 ? <><CheckCircle2 size={15} /> {nextLabel}</> : nextLabel}
           </button>
           {batchCandidates.length > 0 && (
@@ -1410,7 +1425,7 @@ function ReferScreen({ points, setPoints, referrals, setReferrals, lifetimeTrips
   );
 }
 
-const NIGERIAN_BANKS = ["Access Bank", "GTBank", "First Bank", "Zenith Bank", "UBA", "Kuda", "Opay", "Moniepoint"];
+const NIGERIAN_BANKS = ["Access Bank", "GTBank", "First Bank", "Zenith Bank", "UBA", "Kuda", "Opay", "Moniepoint", "Palmpay", "Wema Bank", "Sterling Bank", "Fidelity Bank", "Stanbic IBTC", "FCMB", "Union Bank", "Polaris Bank", "Ecobank", "Keystone Bank", "Unity Bank", "Providus Bank", "Jaiz Bank", "Standard Chartered", "Citibank"];
 
 function BankAccountModal({ current, onClose, onSave }) {
   const [bank, setBank] = useState(current?.bank || NIGERIAN_BANKS[0]);
@@ -1430,6 +1445,7 @@ function BankAccountModal({ current, onClose, onSave }) {
         </div>
         <div className="field" style={{ marginBottom: 10 }}><span>Account number</span><input type="text" inputMode="numeric" maxLength={10} value={accountNumber} onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ""))} placeholder="10-digit account number" /></div>
         <div className="field" style={{ marginBottom: 16 }}><span>Account holder name</span><input type="text" value={accountName} onChange={(e) => setAccountName(e.target.value)} placeholder="Must match your bank account" /></div>
+        {accountNumber.length === 10 && accountName.trim() && <div className="muted small" style={{ marginBottom: 12 }}>Name check: Super Admin confirms this name matches your BVN before your first payout. Payouts stay on hold until then.</div>}
         <button className="primary-btn-sm wide" disabled={!valid} onClick={() => { onSave({ bank, last4: accountNumber.slice(-4), accountName }); onClose(); }}>Save payout account</button>
       </div>
     </div>
@@ -2273,12 +2289,29 @@ function IdFields({ nin, setNin, bvn, setBvn }) {
   );
 }
 
+function RiderDocFields({ docs, setDocs }) {
+  const up = (k) => (e) => setDocs((d) => ({ ...d, [k]: e.target.value }));
+  return (
+    <>
+      <label className="field"><span>Vehicle</span>
+        <select className="sort-select" value={docs.vehicle} onChange={up("vehicle")}>{VEHICLES.map((v) => <option key={v.key} value={v.key}>{v.label}</option>)}</select>
+      </label>
+      <label className="field"><span>Driver's licence number</span><input type="text" value={docs.licence} onChange={up("licence")} placeholder="FRSC licence number" required /></label>
+      <label className="field"><span>Vehicle plate number</span><input type="text" value={docs.plate} onChange={up("plate")} placeholder="e.g. LSR 123 AB" required /></label>
+      <label className="field"><span>Guarantor full name</span><input type="text" value={docs.gName} onChange={up("gName")} required /></label>
+      <label className="field"><span>Guarantor phone</span><input type="tel" inputMode="numeric" value={docs.gPhone} onChange={(e) => setDocs((d) => ({ ...d, gPhone: e.target.value.replace(/\D/g, "").slice(0, 11) }))} placeholder="080..." required /></label>
+      <div className="muted small">Super Admin double-checks your NIN, BVN, licence, vehicle papers and guarantor (we may call your guarantor) before you can go online.</div>
+    </>
+  );
+}
 function LoginScreen({ onLogin }) {
   const [mode, setMode] = useState("signin");
   const [loading, setLoading] = useState(false);
   const [nin, setNin] = useState("");
   const [bvn, setBvn] = useState("");
-  const idsOk = mode !== "signup" || idFieldsValid(nin, bvn);
+  const [docs, setDocs] = useState({ vehicle: "bike", licence: "", plate: "", gName: "", gPhone: "" });
+  const docsOk = docs.licence.trim() && docs.plate.trim() && docs.gName.trim() && /^\d{11}$/.test(docs.gPhone);
+  const idsOk = mode !== "signup" || (idFieldsValid(nin, bvn) && docsOk);
   const submit = (e) => { e.preventDefault(); if (!idsOk) return; setLoading(true); setTimeout(() => { setLoading(false); onLogin(); }, 700); };
   return (
     <div className="medra-root">
@@ -2302,6 +2335,7 @@ function LoginScreen({ onLogin }) {
             <label className="field"><span>Email</span><input type="email" defaultValue="demo@medra.com" placeholder="you@example.com" required /></label>
             <label className="field"><span>Password</span><input type="password" defaultValue="demo1234" placeholder="********" required /></label>
             {mode === "signup" && <IdFields nin={nin} setNin={setNin} bvn={bvn} setBvn={setBvn} />}
+            {mode === "signup" && <RiderDocFields docs={docs} setDocs={setDocs} />}
             <button className={`primary-btn wide green ${loading ? "loading" : ""}`} type="submit" disabled={loading || !idsOk}>{loading ? <span className="spinner" /> : mode === "signin" ? "Sign in" : "Submit application"}</button>
           </form>
         </div>

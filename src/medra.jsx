@@ -794,7 +794,7 @@ function CompareModal({ products, onClose }) {
                 <div className="compare-row"><span className="muted small">Price</span><span className="mono">{naira(sellers[0].customerPrice)}</span></div>
                 <div className="compare-row"><span className="muted small">Rating</span><span>{p.rating} <Star size={10} fill="#F59E0B" color="#F59E0B" style={{ verticalAlign: "middle" }} /></span></div>
                 <div className="compare-row"><span className="muted small">Sellers</span><span>{sellers.length} nearby</span></div>
-                <div className="compare-row"><span className="muted small">Fastest ETA</span><span>~{Math.min(...sellers.map((s) => s.etaMin))} min</span></div>
+                <div className="compare-row"><span className="muted small">Fastest ETA</span><span>{etaRange(Math.min(...sellers.map((s) => s.etaMin)))}</span></div>
               </div>
             );
           })}
@@ -1183,6 +1183,23 @@ function SymptomCheckerScreen({ onEmergency, onNonEmergency, onLogCheck, history
   );
 }
 
+const deliveryPin = (id) => String(id).replace(/\D/g, "").slice(-4).padStart(4, "0");
+const etaRange = (m) => `${m}-${m + 15} min`;
+function EmergencyTips({ place }) {
+  const text = `Emergency: please meet me at ${place || "the nearest hospital"}. Sent from Medra.`;
+  return (
+    <div className="panel enter">
+      <div className="panel-title" style={{ fontSize: 13 }}>While you travel to the hospital</div>
+      <ul className="muted small" style={{ paddingLeft: 18, marginBottom: 10 }}>
+        <li>Stay as calm as you can and keep the person still and warm.</li>
+        <li>Bring a phone, ID, any medicines they take, and some cash or a card.</li>
+        <li>Ask someone to come with you, and tell the hospital you are on the way.</li>
+        <li>Do not give food, drink or medicine unless a health worker says so.</li>
+      </ul>
+      <a className="ghost-btn-sm" href={`https://wa.me/?text=${encodeURIComponent(text)}`} target="_blank" rel="noreferrer">Send to a family member on WhatsApp</a>
+    </div>
+  );
+}
 function EmergencyResultPanel({ symptoms, onFindEmergencyCare, onBack }) {
   return (
     <div className="section-pad">
@@ -1193,6 +1210,7 @@ function EmergencyResultPanel({ symptoms, onFindEmergencyCare, onBack }) {
         <button className="primary-btn-sm wide" style={{ background: "#DC2626" }} onClick={onFindEmergencyCare}><MapPin size={14} style={{ verticalAlign: "middle", marginRight: 4 }} />Find the Nearest Hospital</button>
         <button className="ghost-btn-sm" style={{ marginTop: 8 }} onClick={onBack}>Back</button>
       </div>
+      <EmergencyTips />
     </div>
   );
 }
@@ -2499,7 +2517,7 @@ function ProductModal({ product, onClose, onAdd, onOpenProduct, onOpenStore, uni
                     <td className="mono">{naira(s.customerPrice)}</td>
                     <td className="muted small">{s.distance} km</td>
                     <td className="muted small">{s.rating} <Star size={10} fill="#F59E0B" color="#F59E0B" style={{ verticalAlign: "middle" }} /></td>
-                    <td className="muted small">~{s.etaMin} min</td>
+                    <td className="muted small">{etaRange(s.etaMin)}</td>
                     <td><button className="prod-add" onClick={() => onAdd(s)}><Plus size={14} /></button></td>
                   </tr>
                 ))}
@@ -2516,7 +2534,7 @@ function ProductModal({ product, onClose, onAdd, onOpenProduct, onOpenStore, uni
                   <div className="driver-avatar sm store">{s.initials}</div>
                   <div className="ti-mid">
                     <div className="card-name">{s.vendor} {i === 0 && <span className="status-pill done">Best price</span>}</div>
-                    <div className="muted small"><Stars value={s.rating} size={10} /> {s.rating} -- {s.distance} km -- ~{s.etaMin} min</div>
+                    <div className="muted small"><Stars value={s.rating} size={10} /> {s.rating} -- {s.distance} km -- {etaRange(s.etaMin)}</div>
                     {i === 0 && priceGapPct >= 3 && <div className="why-seller-note">{priceGapPct}% cheaper than {next.vendor}{isFastest ? " and the fastest option here" : ""}</div>}
                     <button className="link-btn" style={{ padding: 0 }} onClick={() => onOpenStore(s.vendor)}>View store</button>
                   </div>
@@ -3140,6 +3158,16 @@ function ShareTripModal({ order, onClose }) {
   );
 }
 
+function DeliveryPinPanel({ order }) {
+  if (!order || !["picked_up", "on_the_way"].includes(order.status)) return null;
+  return (
+    <div className="panel enter" style={{ background: "#F5F3FF", border: "1px solid #DDD6FE" }}>
+      <div className="panel-title" style={{ fontSize: 13 }}>Your delivery code</div>
+      <div className="mono" style={{ fontSize: 28, letterSpacing: 6, margin: "6px 0" }}>{deliveryPin(order.id)}</div>
+      <div className="muted small">Tell this code to the rider only when you have your order in hand. It proves the order reached you.</div>
+    </div>
+  );
+}
 function OrderSizePanel({ order, onOversizeChoice }) {
   const d = order && order.sharedData;
   if (!d || !d.sizeClass) return null;
@@ -3196,7 +3224,7 @@ function TrackingScreen({ order, driver, onRate, onCancel, onTip, onEdit, onTogg
     const stageIdx2 = stageKeys.indexOf(order.status);
     return (
       <div className="section-pad">
-        <OrderSizePanel order={order} onOversizeChoice={onOversizeChoice} />
+        <OrderSizePanel order={order} onOversizeChoice={onOversizeChoice} /><DeliveryPinPanel order={order} />
         <div className="panel enter">
           <div className="panel-title-row"><div className="panel-title">Order #{order.id}</div><span className="status-pill prep">{stage.label}</span></div>
           <div className="muted small" style={{ marginBottom: 16 }}>{stage.desc}</div>
@@ -3226,7 +3254,7 @@ function TrackingScreen({ order, driver, onRate, onCancel, onTip, onEdit, onTogg
     };
     return (
       <div className="section-pad">
-        <OrderSizePanel order={order} onOversizeChoice={onOversizeChoice} />
+        <OrderSizePanel order={order} onOversizeChoice={onOversizeChoice} /><DeliveryPinPanel order={order} />
         <div className="panel enter">
           <div className="panel-title-row"><div className="panel-title">Order #{order.id}</div><span className={`status-pill ${order.status === "delivered" ? "done" : "route"}`}>{labels[order.status]}</span></div>
           {rider && (
@@ -3235,7 +3263,7 @@ function TrackingScreen({ order, driver, onRate, onCancel, onTip, onEdit, onTogg
               <div className="ti-mid"><div className="card-name" style={{ fontSize: 13 }}>{rider.nickname}</div><div className="muted small">{rider.phone}</div></div>
             </div>
           )}
-          {order.status === "on_the_way" && <div className="muted small" style={{ marginBottom: 12 }}><Clock size={11} style={{ verticalAlign: "middle" }} /> ETA ~{shared.etaMinutes || 15} minutes</div>}
+          {order.status === "on_the_way" && <div className="muted small" style={{ marginBottom: 12 }}><Clock size={11} style={{ verticalAlign: "middle" }} /> ETA {etaRange(shared.etaMinutes || 15)} -- busy roads may add time</div>}
           {order.status === "delivered_awaiting_customer_confirm" && (
             <>
               <div className="muted small" style={{ marginBottom: 12 }}>Confirm you actually received this so it can be marked delivered for real.</div>
@@ -3267,7 +3295,7 @@ function TrackingScreen({ order, driver, onRate, onCancel, onTip, onEdit, onTogg
       {reportOpen && <ReportIssueModal order={order} onClose={() => setReportOpen(false)} onSubmit={onReportSubmitted} />}
       {shareOpen && <ShareTripModal order={order} onClose={() => setShareOpen(false)} />}
       {callToast && <div className="switch-toast"><PhoneCall size={14} /> Calling {driver?.name}...</div>}
-      <OrderSizePanel order={order} onOversizeChoice={onOversizeChoice} />
+      <OrderSizePanel order={order} onOversizeChoice={onOversizeChoice} /><DeliveryPinPanel order={order} />
       <div className="panel enter">
         <div className="panel-title-row"><div className="panel-title">Order #{order.id}</div><StatusPill status={cancelled ? "Cancelled" : delivered ? "Delivered" : order.status === "scheduled" ? "Scheduled" : "Out for Delivery"} /></div>
         {order.recipient && <div className="instructions-note"><Users size={11} /> Delivering to {order.recipient.name}{order.recipient.phone ? ` -- ${order.recipient.phone}` : ""} (not you)</div>}
@@ -4071,6 +4099,7 @@ function RewardsScreen({ points, lifetimePoints, gamesDone, onGameComplete, cele
 
   return (
     <div className="section-pad">
+      <div className="muted small" style={{ background: "#F8FAFC", border: "1px solid var(--border)", borderRadius: 10, padding: "8px 10px" }}>Games and prize draws are for customers aged 18 and over. Prizes are funded by Medra. Game rules are shown on each game, and you can complain through Help. Preview build: these rules are still being reviewed by a Nigerian lawyer.</div>
       <div className="panel enter points-hero">
         <Award size={26} color="#F59E0B" />
         <div className="kpi-value" style={{ fontSize: 28, margin: "8px 0 2px" }}>{points} / {POINTS_CAP} pts</div>
@@ -4503,8 +4532,8 @@ function RewardsScreen({ points, lifetimePoints, gamesDone, onGameComplete, cele
       </div>
 
       <div className="panel enter" style={{ background: "linear-gradient(160deg,#ECFDF5,#fff)", border: "1px solid #A7F3D0" }}>
-        <div className="panel-title"><ShieldCheck size={16} style={{ marginRight: 6, verticalAlign: "middle" }} />Point Insurance</div>
-        <div className="muted small" style={{ marginBottom: 10 }}>If you're sitting at the {POINTS_CAP.toLocaleString()}-point cap at month's end, you automatically keep half those points either way -- Insurance covers some or all of the other half instead of letting it go. Costs 2,000 points for every 10,000 points of extra coverage.</div>
+        <div className="panel-title"><ShieldCheck size={16} style={{ marginRight: 6, verticalAlign: "middle" }} />Points Protection</div>
+        <div className="muted small" style={{ marginBottom: 10 }}>If you're sitting at the {POINTS_CAP.toLocaleString()}-point cap at month's end, you automatically keep half those points either way -- Protection covers some or all of the other half instead of letting it go. Costs 2,000 points for every 10,000 points of extra coverage.</div>
         {insuranceCoverage > 0 ? (
           <div className="muted small" style={{ color: "#16A34A" }}><CircleCheck size={12} style={{ verticalAlign: "middle" }} /> {insuranceCoverage.toLocaleString()} points covered this month.</div>
         ) : (
@@ -8225,8 +8254,8 @@ export default function MedraApp({ sharedAuthed, onAuth, onLogout, sharedOrderSt
         setPoints(kept);
         setInsuranceCoverage(0);
         setCapToast(insuranceKept >= otherHalf
-          ? `Point Insurance kicked in -- fully covered, you kept all ${kept.toLocaleString()} points instead of losing half.`
-          : `Point Insurance kicked in -- you kept ${kept.toLocaleString()} points (the automatic half, plus your covered portion of the other half).`);
+          ? `Points Protection kicked in -- fully covered, you kept all ${kept.toLocaleString()} points instead of losing half.`
+          : `Points Protection kicked in -- you kept ${kept.toLocaleString()} points (the automatic half, plus your covered portion of the other half).`);
       } else {
         // Softened rule: forfeit half your capped points at month-end
         // instead of all of them.
