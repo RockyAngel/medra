@@ -36,6 +36,7 @@ function CombinedPreview() {
   const [active, setActive] = useState("landing");
   const [sharedAuthed, setSharedAuthed] = useState(false);
   const [sharedOrders, setSharedOrders] = useState([]);
+  const [sharedVerifications, setSharedVerifications] = useState([]);
   const [viewingAs, setViewingAs] = useState(null); // { app, target } while impersonating via Super Admin's View As
   const [crossAppActivity, setCrossAppActivity] = useState([]);
   const [activityOpen, setActivityOpen] = useState(false);
@@ -49,6 +50,9 @@ function CombinedPreview() {
   }, [viewingAs]);
   const sharedOrderStore = {
     orders: sharedOrders,
+    verifications: sharedVerifications,
+    addVerifications: (items) => { setSharedVerifications((v) => [...items, ...v]); setCrossAppActivity((a) => [{ time: new Date().toLocaleTimeString(), text: `${items[0].applicant} signed up as ${items[0].role} -- sent to Super Admin to verify` }, ...a].slice(0, 20)); },
+    updateVerification: (id, patch) => setSharedVerifications((v) => v.map((x) => (x.id === id ? { ...x, ...patch } : x))),
     setOrders: setSharedOrders,
     addOrder: (order) => { setSharedOrders((os) => [order, ...os]); setCrossAppActivity((a) => [{ time: new Date().toLocaleTimeString(), text: `Order #${order.id} placed` }, ...a].slice(0, 20)); },
     updateOrder: (id, patch) => {

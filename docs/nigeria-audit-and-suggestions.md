@@ -495,6 +495,64 @@ Also added: Regulatory Register (Super Admin > System), per-city delivery settin
 | 149 | Substitute the 285-flag Feature Marketplace list with a short list of toggles that actually change something; park th... | Not done yet -- buildable, queued for a later round |
 | 150 | Fix the prototype-versus-real wording: label every simulated feature (tracking, video, GPS, push) with a small "Previ... | Not done yet -- buildable, queued for a later round |
 
+---
+
+## Part 5 -- 40 new suggestions (2 Nov 2026)
+
+These are new -- none repeat the first 150.
+
+### Trust and verification
+151. **Add** a "re-verify every 12 months" rule for licences, MDCN and PCN, with a reminder to Super Admin 30 days before expiry.
+152. **Add** a risk score on each applicant in the Verification Queue (mismatched names, reused numbers, brand-new SIM) so the riskiest are checked first.
+153. **Add** a two-person rule: payouts above a set amount, and approving a rider with a flagged check, need a second Super Admin.
+154. **Add** a "why was I rejected, how do I fix it" screen for applicants, with a one-tap resubmit.
+155. **Add** a service-level timer on the queue (check within 24 hours) and an alert when items are overdue.
+156. **Add** photo selfie matching on the NIN photo for riders, through an identity provider.
+157. **Add** a verified-rider badge on the customer tracking screen (name, photo, plate) so customers know who is coming.
+158. **Add** a seller trust level (new, verified, trusted) that controls payout speed and listing limits.
+
+### Delivery and riders
+159. **Add** a rider "area knowledge" rating so the best riders for an area get its orders first.
+160. **Add** a landmark-photo field: the customer uploads a photo of their gate or building.
+161. **Add** a "meet at the gate" option for estates with security, with the gate code shared only after pickup.
+162. **Add** an estate/area delivery rule list (some estates allow deliveries only until a set hour).
+163. **Add** rider heat-maps by hour so riders know when and where to position themselves.
+164. **Add** a customer "leave with gateman" choice with a photo as proof.
+165. **Add** a rider weekly earnings goal with a progress bar.
+166. **Add** a fuel and maintenance cost summary so riders see their real take-home per week.
+167. **Add** a rider swap for broken-down vehicles: reassign the order and pay both riders fairly for their part.
+168. **Add** a night-delivery rule (a later cut-off, higher fee, and only verified riders).
+
+### Money
+169. **Add** a seller cash-flow view: money waiting, money released, and the date each lands.
+170. **Add** a refund-reason report for Super Admin to spot sellers or riders causing repeat refunds.
+171. **Add** a "fee preview" for sellers before they set a price, showing exactly what the customer pays.
+172. **Add** monthly statements as a downloadable PDF for sellers and riders.
+173. **Add** a rider cash-in-hand limit that blocks new cash-on-delivery orders until cash is paid in.
+174. **Add** a daily reconciliation screen for Super Admin: orders, payments received, payouts due, and any gap.
+
+### Customers
+175. **Add** saved addresses with a name and a photo ("Home gate", "Office reception").
+176. **Add** a re-order button on past orders, with a note if a price changed.
+177. **Add** an "estimated total with delivery" on every product card, not only at checkout.
+178. **Add** a store open/closed status that follows the seller's real hours and power-cut notices.
+179. **Add** an "item unavailable" swap: the customer picks a replacement in advance, or says "refund me".
+180. **Add** a simple order-help chat that routes by topic (late, wrong item, payment) to Support.
+
+### Safety and health
+181. **Add** a rider "share my trip" link customers can send to family.
+182. **Add** an order-check for medicines: warn when a customer orders a restricted item without a verified prescription.
+183. **Add** a pharmacy cold-chain note for items that must stay cool, with a rider acknowledgement.
+184. **Add** a clear "who can see my health data" screen with one-tap revoke.
+185. **Add** a health-emergency shortcut on the home screen for users who have already used the symptom checker.
+
+### Operations and growth
+186. **Add** a launch checklist screen in Super Admin that ties the Regulatory Register to go/no-go for each city.
+187. **Add** a city rollout switch: open sellers first, then riders, then customers.
+188. **Add** a pilot-mode cap (for example 50 orders a day per city) so launch problems stay small.
+189. **Add** a feedback button on every screen that attaches the screen name and sends it to Super Admin.
+190. **Add** a weekly "what went wrong" digest for Super Admin: late orders, rejected checks, refunds, rider no-shows.
+
 ## Sources
 
 - [Sanwo-Olu rules out reversal of okada ban in Lagos](https://www.ripplesnigeria.com/sanwo-olu-rules-out-reversal-of-okada-ban-in-lagos/)

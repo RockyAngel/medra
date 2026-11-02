@@ -1131,8 +1131,9 @@ const VERIFICATION_SEED = [
 ];
 const VERIFICATION_PILL = { pending: "prep", info_requested: "route", verified: "done", rejected: "delay" };
 const VERIFICATION_LABEL = { pending: "Pending", info_requested: "More info asked", verified: "Verified", rejected: "Rejected" };
-function KycVerificationsSection() {
-  const [items, setItems] = useState(VERIFICATION_SEED);
+function KycVerificationsSection({ sharedOrderStore }) {
+  const [seedItems, setItems] = useState(VERIFICATION_SEED);
+  const items = [...(sharedOrderStore?.verifications || []), ...seedItems];
   const [checkFilter, setCheckFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("pending");
   const [query, setQuery] = useState("");
@@ -1140,7 +1141,8 @@ function KycVerificationsSection() {
   const [reason, setReason] = useState("Document unclear");
   const [log, setLog] = useState([]);
   const decide = (it, status, why) => {
-    setItems((a) => a.map((x) => x.id === it.id ? { ...x, status } : x));
+    if (it.shared && sharedOrderStore) sharedOrderStore.updateVerification(it.id, { status });
+    else setItems((a) => a.map((x) => x.id === it.id ? { ...x, status } : x));
     setLog((l) => [{ id: it.id, text: `${VERIFICATION_LABEL[status]} -- ${it.applicant} (${it.check})${why ? `: ${why}` : ""}`, at: "just now" }, ...l].slice(0, 6));
   };
   const shown = items.filter((x) => (checkFilter === "all" || x.check === checkFilter) && (statusFilter === "all" || x.status === statusFilter) && (!query || (x.applicant + x.detail).toLowerCase().includes(query.toLowerCase())));

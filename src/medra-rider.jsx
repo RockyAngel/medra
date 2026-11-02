@@ -483,6 +483,7 @@ function SharedDeliveriesSection({ vehicleType, sharedOrderStore, setTodayEarnin
   }
   const available = sharedOrderStore.orders.filter((o) => o.stage === "seller_preparing" && o.oversizeChoice !== "self_pickup" && vehicleFits(vehicleType, o.sizeClass));
   const [deliveryPhotos, setDeliveryPhotos] = useState({});
+  const [pins, setPins] = useState({});
   const myActive = sharedOrderStore.orders.filter((o) => o.assignedRider === RIDER.name && ["rider_assigned", "picked_up", "on_the_way", "delivered_awaiting_customer_confirm"].includes(o.stage));
 
   const accept = (o) => sharedOrderStore.updateOrder(o.id, { stage: "rider_assigned", assignedRider: RIDER.name, riderInfo: { nickname: RIDER.name.split(" ")[0] + " " + RIDER.name.split(" ")[1][0] + ".", phone: RIDER.phone }, riderAssignedAt: Date.now() });
@@ -553,8 +554,11 @@ function SharedDeliveriesSection({ vehicleType, sharedOrderStore, setTodayEarnin
                       <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={(e) => capturePhoto(o.id, e.target.files?.[0])} />
                     </label>
                     {deliveryPhotos[o.id] && <div className="muted small">📷 {deliveryPhotos[o.id]}</div>}
-                    <button className="ghost-btn-sm" disabled={!deliveryPhotos[o.id]} onClick={() => markDelivered(o)}>Mark delivered</button>
-                    {!deliveryPhotos[o.id] && <div className="muted small">A delivery photo is required before you can mark this delivered.</div>}
+                    <label className="field" style={{ margin: 0 }}><span>Customer's 4-digit delivery code</span>
+                      <input type="text" inputMode="numeric" maxLength={4} value={pins[o.id] || ""} onChange={(e) => setPins((p) => ({ ...p, [o.id]: e.target.value.replace(/\D/g, "") }))} placeholder="Ask the customer" />
+                    </label>
+                    <button className="ghost-btn-sm" disabled={!deliveryPhotos[o.id] || (pins[o.id] || "") !== deliveryPin(o.id)} onClick={() => markDelivered(o)}>Mark delivered</button>
+                    {(!deliveryPhotos[o.id] || (pins[o.id] || "") !== deliveryPin(o.id)) && <div className="muted small">You need a delivery photo and the customer's 4-digit code before you can mark this delivered.</div>}
                   </div>
                 )}
                 {o.stage === "delivered_awaiting_customer_confirm" && <div className="muted small"><CircleCheck size={12} style={{ verticalAlign: "middle", color: "#16A34A" }} /> Waiting on the customer to confirm too -- your payout lands once they do.</div>}
@@ -644,7 +648,7 @@ function BusyZonesScreen({ newOrders, favoriteZones, onToggleFavorite, vehicleTy
   );
 }
 
-function DashboardScreen({ hiddenOrders = 0, vehicleType, online, setOnline, newOrders, onAccept, onReject, onBatch, activeTrip, stageIdx, onAdvance, onHandoff, kpis, onNavigate, declineLog, todayEarnings, todayOrders, favoriteZones }) {
+function DashboardScreen({ verificationHold = null, hiddenOrders = 0, vehicleType, online, setOnline, newOrders, onAccept, onReject, onBatch, activeTrip, stageIdx, onAdvance, onHandoff, kpis, onNavigate, declineLog, todayEarnings, todayOrders, favoriteZones }) {
   const [decliningOrderId, setDecliningOrderId] = useState(null);
   const [declineReason, setDeclineReason] = useState("");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
@@ -657,6 +661,7 @@ function DashboardScreen({ hiddenOrders = 0, vehicleType, online, setOnline, new
   const [shiftSummaryOpen, setShiftSummaryOpen] = useState(false);
   const attemptGoOnline = () => {
     if (online) { setShiftSummaryOpen(true); return; }
+    if (verificationHold) return;
     if (!preShiftDone) setPreShiftOpen(true);
     else setOnline(true);
   };
@@ -785,6 +790,7 @@ function DashboardScreen({ hiddenOrders = 0, vehicleType, online, setOnline, new
         <div className="peak-banner"><Zap size={15} /> Peak hours are on until {peakEndsAt()} -- your payout per delivery is higher right now.</div>
       )}
 
+      {verificationHold && <div className="muted small" style={{ background: "#FEF3C7", color: "#92400E", padding: "8px 12px", borderRadius: 10, marginBottom: 10, fontWeight: 600 }}>{verificationHold}</div>}
       <div className="row-2col">
         <div className="online-card">
           <div className="ti-mid"><div className="card-name-lg">You are {online ? "Online" : "Offline"}</div><div className="muted-l">{online ? "You will receive orders" : "Go online to start receiving orders"}</div></div>
@@ -2304,7 +2310,8 @@ function RiderDocFields({ docs, setDocs }) {
     </>
   );
 }
-function LoginScreen({ onLogin }) {
+const ROLE_ITEMS = (role, applicant, rows) => rows.map(([check, detail], i) => ({ id: "VS" + Date.now() + i, applicant, role, check, detail, note: "", submitted: "just now", status: "pending", shared: true }));
+function LoginScreen({ onLogin, onSignup }) {
   const [mode, setMode] = useState("signin");
   const [loading, setLoading] = useState(false);
   const [nin, setNin] = useState("");
@@ -2312,7 +2319,14 @@ function LoginScreen({ onLogin }) {
   const [docs, setDocs] = useState({ vehicle: "bike", licence: "", plate: "", gName: "", gPhone: "" });
   const docsOk = docs.licence.trim() && docs.plate.trim() && docs.gName.trim() && /^\d{11}$/.test(docs.gPhone);
   const idsOk = mode !== "signup" || (idFieldsValid(nin, bvn) && docsOk);
-  const submit = (e) => { e.preventDefault(); if (!idsOk) return; setLoading(true); setTimeout(() => { setLoading(false); onLogin(); }, 700); };
+  const submit = (e) => {
+    e.preventDefault(); if (!idsOk) return;
+    if (mode === "signup" && onSignup) {
+      const who = (e.target.querySelector('input[type="email"]') || {}).value || "New applicant";
+      onSignup(ROLE_ITEMS("Rider", who, [["NIN", "NIN *******" + nin.slice(-4)], ["BVN", "BVN *******" + bvn.slice(-4)], ["Driver's licence", "Licence " + docs.licence], ["Vehicle papers", "Plate " + docs.plate + ", " + docs.vehicle], ["Guarantor", docs.gName + ", " + docs.gPhone.slice(0, 4) + " *** " + docs.gPhone.slice(-4)]]));
+    }
+    setLoading(true); setTimeout(() => { setLoading(false); onLogin(); }, 700);
+  };
   return (
     <div className="medra-root">
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" />
@@ -2429,6 +2443,11 @@ export default function MedraRiderApp({ sharedAuthed, onAuth, onLogout, sharedOr
   // Only offers this vehicle can carry are shown; the rest are hidden, not rejected.
   const visibleOrders = newOrders.filter((o) => vehicleFits(vehicleType, o.sizeKey));
   const hiddenOrders = newOrders.length - visibleOrders.length;
+  // In the combined preview, a rider who just signed up cannot go online until Super Admin has verified every check.
+  const myChecks = (sharedOrderStore?.verifications || []).filter((v) => v.role === "Rider");
+  const verificationHold = myChecks.length === 0 ? null
+    : myChecks.some((v) => v.status === "rejected") ? "Super Admin rejected one of your documents. Resubmit it to go online."
+    : myChecks.some((v) => v.status !== "verified") ? `Waiting for Super Admin to verify your documents (${myChecks.filter((v) => v.status === "verified").length} of ${myChecks.length} checked). You can go online once all are approved.` : null;
   const [notifications, setNotifications] = useState(NOTIFICATIONS);
   const [shiftReminderSent, setShiftReminderSent] = useState(false);
   useEffect(() => {
@@ -2464,7 +2483,7 @@ export default function MedraRiderApp({ sharedAuthed, onAuth, onLogout, sharedOr
   if (!authed && showLanding) {
     return <RiderLandingPage onJoin={() => setShowLanding(false)} onSignIn={() => setShowLanding(false)} />;
   }
-  if (!authed) return <LoginScreen onLogin={() => setAuthed(true)} />;
+  if (!authed) return <LoginScreen onSignup={(items) => sharedOrderStore?.addVerifications?.(items)} onLogin={() => setAuthed(true)} />;
 
   const onAccept = (o) => { setNewOrders((os) => os.filter((x) => x.id !== o.id)); setActiveTrip(o); setStageIdx(0); setActive("dashboard"); };
   const onBatch = (o) => {
@@ -2494,8 +2513,8 @@ export default function MedraRiderApp({ sharedAuthed, onAuth, onLogout, sharedOr
   const activeLabel = NAV_ITEMS.find((i) => i.key === active)?.label || "Dashboard";
 
   const SCREENS = {
-    dashboard: appLoading ? <DashboardSkeleton /> : <DashboardScreen online={online} setOnline={setOnline} newOrders={visibleOrders} hiddenOrders={hiddenOrders} vehicleType={vehicleType} onAccept={onAccept} onReject={onReject} onBatch={onBatch} activeTrip={activeTrip} stageIdx={stageIdx} onAdvance={onAdvance} onHandoff={onHandoff} kpis={dynamicKpis} onNavigate={setActive} declineLog={declineLog} todayEarnings={todayEarnings} todayOrders={todayOrders} favoriteZones={favoriteZones} />,
-    "new-orders": <DashboardScreen online={online} setOnline={setOnline} newOrders={visibleOrders} hiddenOrders={hiddenOrders} vehicleType={vehicleType} onAccept={onAccept} onReject={onReject} onBatch={onBatch} activeTrip={activeTrip} stageIdx={stageIdx} onAdvance={onAdvance} onHandoff={onHandoff} kpis={dynamicKpis} onNavigate={setActive} declineLog={declineLog} todayEarnings={todayEarnings} todayOrders={todayOrders} favoriteZones={favoriteZones} />,
+    dashboard: appLoading ? <DashboardSkeleton /> : <DashboardScreen online={online} setOnline={setOnline} newOrders={visibleOrders} verificationHold={verificationHold} hiddenOrders={hiddenOrders} vehicleType={vehicleType} onAccept={onAccept} onReject={onReject} onBatch={onBatch} activeTrip={activeTrip} stageIdx={stageIdx} onAdvance={onAdvance} onHandoff={onHandoff} kpis={dynamicKpis} onNavigate={setActive} declineLog={declineLog} todayEarnings={todayEarnings} todayOrders={todayOrders} favoriteZones={favoriteZones} />,
+    "new-orders": <DashboardScreen online={online} setOnline={setOnline} newOrders={visibleOrders} verificationHold={verificationHold} hiddenOrders={hiddenOrders} vehicleType={vehicleType} onAccept={onAccept} onReject={onReject} onBatch={onBatch} activeTrip={activeTrip} stageIdx={stageIdx} onAdvance={onAdvance} onHandoff={onHandoff} kpis={dynamicKpis} onNavigate={setActive} declineLog={declineLog} todayEarnings={todayEarnings} todayOrders={todayOrders} favoriteZones={favoriteZones} />,
     "busy-zones": <BusyZonesScreen newOrders={visibleOrders} favoriteZones={favoriteZones} onToggleFavorite={toggleFavoriteZone} vehicleType={vehicleType} />,
     "shared-deliveries": <SharedDeliveriesSection vehicleType={vehicleType} sharedOrderStore={sharedOrderStore} setTodayEarnings={setTodayEarnings} setTodayOrders={setTodayOrders} />,
     profile: <ProfileScreen />,

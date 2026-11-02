@@ -2643,14 +2643,22 @@ function SellerDocFields({ docs, setDocs }) {
     </>
   );
 }
-function LoginScreen({ onLogin }) {
+const ROLE_ITEMS = (role, applicant, rows) => rows.map(([check, detail], i) => ({ id: "VS" + Date.now() + i, applicant, role, check, detail, note: "", submitted: "just now", status: "pending", shared: true }));
+function LoginScreen({ onLogin, onSignup }) {
   const [mode, setMode] = useState("signin");
   const [loading, setLoading] = useState(false);
   const [nin, setNin] = useState("");
   const [bvn, setBvn] = useState("");
   const [docs, setDocs] = useState({ kind: "registered", cac: "", tin: "", nafdac: "" });
   const idsOk = mode !== "signup" || (idFieldsValid(nin, bvn) && (docs.kind === "trader" || docs.cac.trim()));
-  const submit = (e) => { e.preventDefault(); if (!idsOk) return; setLoading(true); setTimeout(() => { setLoading(false); onLogin(); }, 700); };
+  const submit = (e) => {
+    e.preventDefault(); if (!idsOk) return;
+    if (mode === "signup" && onSignup) {
+      const who = (e.target.querySelector('input[type="email"]') || {}).value || "New applicant";
+      onSignup(ROLE_ITEMS("Seller", who, [["NIN", "NIN *******" + nin.slice(-4)], ["BVN", "BVN *******" + bvn.slice(-4)]].concat(docs.cac ? [["CAC / RC number", docs.cac]] : []).concat(docs.tin ? [["TIN", docs.tin]] : []).concat(docs.nafdac ? [["NAFDAC", docs.nafdac]] : [])));
+    }
+    setLoading(true); setTimeout(() => { setLoading(false); onLogin(); }, 700);
+  };
   return (
     <div className="medra-root">
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" />
@@ -2784,7 +2792,7 @@ export default function MedraSellerApp({ sharedAuthed, onAuth, onLogout, sharedO
   if (!authed && showLanding) {
     return <SellerLandingPage onStart={() => setShowLanding(false)} onSignIn={() => setShowLanding(false)} />;
   }
-  if (!authed) return <LoginScreen onLogin={() => setAuthed(true)} />;
+  if (!authed) return <LoginScreen onSignup={(items) => sharedOrderStore?.addVerifications?.(items)} onLogin={() => setAuthed(true)} />;
 
   const updateStock = (id, stock) => setInventory((inv) => inv.map((i) => (i.id === id ? { ...i, stock } : i)));
   const updatePrice = (id, price) => setInventory((inv) => inv.map((i) => (i.id === id ? { ...i, price } : i)));

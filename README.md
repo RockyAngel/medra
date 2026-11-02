@@ -32,7 +32,8 @@ npm test        # smoke-renders all 8 apps
 - Anything needing a second check goes to the Super Admin Verification Queue (NIN, BVN, licences, vehicle papers, guarantors, CAC/TIN/NAFDAC, MDCN/PCN, payout names, transfer proofs); Admin and Support see status only
 - Rider sign-up asks for licence, plate, vehicle and a guarantor; sellers give CAC, TIN and NAFDAC where relevant
 - Per-city delivery settings, rain surcharge and motorbike-restricted zones in Super Admin; Regulatory Register tracks licences and partner agreements
-- Delivery code: the customer reads a 4-digit code to the rider to complete a practice delivery
+- In the combined preview, a new rider or seller sign-up appears live in the Super Admin Verification Queue; a new rider cannot go online until every check is approved
+- Delivery code: the customer reads a 4-digit code to the rider to complete a delivery (practice and live shared orders)
 - **Order statuses** are one set everywhere: Placed, Preparing, Out for Delivery, Delivered, Cancelled.
 - **Reverse auction:** a losing bid under 150 points forfeits the whole bid; a losing bid of 150 or more pays a 2% entry fee.
 - **Destructive actions** (delete, cancel, reject, suspend, remove) ask for confirmation first.
