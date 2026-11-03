@@ -102,3 +102,6 @@ Riders only see orders that fit their vehicle (bicycle: Small; motorbike: up to 
 | NIN, BVN, licence, vehicle papers, guarantor, CAC, TIN, NAFDAC, MDCN, PCN, payout account name, transfer proof | Approve / ask for info / reject with reason | View status only | No access |
 | Regulatory register | Edit | No access | No access |
 | City delivery settings, rain surcharge, restricted zones | Edit | Zone coverage as before; no fee or rain settings | No access |
+
+| Launch checklist, city rollout, pilot cap, daily reconciliation, weekly digest | Edit | No access | No access |
+| Approve a flagged verification item | Two different Super Admins | No access | No access |

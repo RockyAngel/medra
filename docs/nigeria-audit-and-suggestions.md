@@ -336,7 +336,9 @@ Each is tagged **Add**, **Change**, **Substitute**, **Merge**, **Remove** or **F
 
 ---
 
-## Part 4 -- Status of all 150 suggestions (updated 2 Nov 2026)
+## Part 4 -- Status of all 190 suggestions (updated 3 Nov 2026)
+
+**Round 3 additions (3 Nov):** Verification Queue now ranks by risk, shows waiting time and licence expiry, and needs two Super Admins for flagged items; new Super Admin screens for Launch & Rollout (go/no-go, city phases, pilot cap), Daily Reconciliation and a Weekly Digest with refund report and CSV export; rider cash-in-hand limit, take-home summary and customer-unreachable flow; seller money overview, statement download and fee preview; customer addresses with area, landmark, gate photo and handover choice; Health Guides (mental health, mum and baby, common conditions, Pidgin); data and privacy panel; trip sharing.
 
 **Identity and document checks:** anything that must be double-checked now goes to the Super Admin **Verification Queue** (NIN, BVN, driver's licence, vehicle papers, guarantor, CAC, TIN, NAFDAC, MDCN, PCN, payout account names, suspicious transfer proofs). Admin and Support can see status only.
 
@@ -361,8 +363,8 @@ Also added: Regulatory Register (Super Admin > System), per-city delivery settin
 | 15 | Add vehicle types: bicycle, motorbike, tricycle (keke), car, van, truck. | Done |
 | 16 | Add a size-to-vehicle rule: Large needs car/van/keke, Oversized needs van/truck; bikes never see them. | Done |
 | 17 | Add a "restricted zones" list per city where motorbikes are not allowed, with routing to car riders only (needs your ... | Partly done -- Zone list is editable per city; routing orders away from motorbikes needs the real order flow |
-| 18 | Add landmark-based addresses: "near ... bus stop", "opposite ...", with a dropped pin. | Not done yet -- buildable, queued for a later round |
-| 19 | Add an area/LGA dropdown (Lekki Phase 1, Ikeja GRA, Wuse 2, etc.) instead of free text only. | Not done yet -- buildable, queued for a later round |
+| 18 | Add landmark-based addresses: "near ... bus stop", "opposite ...", with a dropped pin. | Done |
+| 19 | Add an area/LGA dropdown (Lekki Phase 1, Ikeja GRA, Wuse 2, etc.) instead of free text only. | Done |
 | 20 | Add a delivery PIN or order code the customer reads to the rider to prove handover. | Partly done -- Customer sees the code and the rider must enter it in the practice flow; the live shared flow does not check it yet |
 | 21 | Add "call customer" and "WhatsApp customer" buttons for riders, with number masking. | Partly done -- Call and WhatsApp buttons added; real number masking needs a calling service |
 | 22 | Add multi-stop and batch deliveries so one rider can carry nearby orders. | Not done yet -- buildable, queued for a later round |
@@ -371,8 +373,8 @@ Also added: Regulatory Register (Super Admin > System), per-city delivery settin
 | 25 | Add a rider "power bank / data" pre-shift check. | Done |
 | 26 | Add a rider rest/ safety rule after long shifts. | Not done yet -- buildable, queued for a later round |
 | 27 | Change ETAs to ranges ("35-50 min") with an "area is busy" note. | Done |
-| 28 | Add a "wrong address" and "customer unreachable" flow with a waiting-time fee. | Not done yet -- buildable, queued for a later round |
-| 29 | Add failed-delivery and return-to-seller fees. | Not done yet -- buildable, queued for a later round |
+| 28 | Add a "wrong address" and "customer unreachable" flow with a waiting-time fee. | Partly done -- Waiting-time steps and return-to-seller added; the ₦200 waiting fee is described but not charged yet |
+| 29 | Add failed-delivery and return-to-seller fees. | Partly done -- Rider is paid half the delivery fee on a failed delivery; the seller-side return fee is not built |
 | 30 | Add a delivery-fee calculator per city that Super Admin controls (base, per km, minimum, surge). | Done |
 | 31 | Change the fee floor so very short trips still cover the rider's fuel. | Done |
 | 32 | Add a tip in naira as well as points. | Not done yet -- buildable, queued for a later round |
@@ -398,7 +400,7 @@ Also added: Regulatory Register (Super Admin > System), per-city delivery settin
 | 52 | Add refund-to-wallet, refund-to-bank and refund-in-points choices with clear timelines. | Not done yet -- buildable, queued for a later round |
 | 53 | Add an automatic refund rule table (for example full refund for a wrong item, partial for late delivery). | Not done yet -- buildable, queued for a later round |
 | 54 | Change "Service fee" wording in Admin and Seller views so the customer-facing price and the seller's net price are cl... | Not done yet -- buildable, queued for a later round |
-| 55 | Add a seller "price you receive vs. price the customer sees" calculator. | Not done yet -- buildable, queued for a later round |
+| 55 | Add a seller "price you receive vs. price the customer sees" calculator. | Done |
 | 56 | Add installment / "pay small small" options (needs a lending partner). | Needs an outside partner or real data |
 | 57 | Add gift cards and vouchers with expiry. | Not done yet -- buildable, queued for a later round |
 | 58 | Add corporate accounts with invoicing and monthly billing. | Needs an outside partner or real data |
@@ -407,7 +409,7 @@ Also added: Regulatory Register (Super Admin > System), per-city delivery settin
 | 61 | Add currency display for diaspora customers (show USD/GBP estimate next to the naira price). | Needs an outside partner or real data |
 | 62 | Fix random order/transaction IDs so they can never repeat (use a proper sequence or UUID). | Not done yet -- buildable, queued for a later round |
 | 63 | Add a Nigerian-law privacy policy and terms, drafted by a local lawyer. | Needs a Nigerian lawyer or accountant first |
-| 64 | Add a data-protection consent screen at sign-up, with the right to download or delete data. | Needs a Nigerian lawyer or accountant first |
+| 64 | Add a data-protection consent screen at sign-up, with the right to download or delete data. | Partly done -- Download and delete-request buttons added in Settings; the sign-up consent screen needs lawyer-drafted wording |
 | 65 | Add a data-protection officer contact and a breach-response checklist for staff. | Needs a Nigerian lawyer or accountant first |
 | 66 | Add a regulatory register page in Super Admin: licences held, renewals, and owners. | Done |
 | 67 | Change or pause the Weekly Lottery, Reverse Auction, Duel and prize games until their legality is confirmed; if kept,... | Needs a Nigerian lawyer or accountant first |
@@ -424,7 +426,7 @@ Also added: Regulatory Register (Super Admin > System), per-city delivery settin
 | 78 | Add consumer-protection language: return window, refund timing, complaint route. | Needs a Nigerian lawyer or accountant first |
 | 79 | Add a "report this seller / rider / customer" flow with evidence upload. | Not done yet -- buildable, queued for a later round |
 | 80 | Add record-retention rules by data type (orders, health, KYC) and an automatic purge. | Needs a Nigerian lawyer or accountant first |
-| 81 | Add audit trail export for regulators. | Needs a Nigerian lawyer or accountant first |
+| 81 | Add audit trail export for regulators. | Partly done -- CSV export of sample audit data; the real audit trail needs the backend |
 | 82 | Add a clear "who we are" legal entity block in the footer and on receipts. | Needs a Nigerian lawyer or accountant first |
 | 83 | Add an anti-money-laundering review for big wallet movements and many small top-ups. | Needs a Nigerian lawyer or accountant first |
 | 84 | Add a sanctions/PEP check placeholder for onboarding. | Needs a Nigerian lawyer or accountant first |
@@ -448,10 +450,10 @@ Also added: Regulatory Register (Super Admin > System), per-city delivery settin
 | 102 | Add doctor schedule slots in local time with automatic reminders by SMS. | Not done yet -- buildable, queued for a later round |
 | 103 | Merge "Health Messages" and "Messages" into one inbox with two tabs (Health / Orders & Support), so the naming confus... | Not done yet -- buildable, queued for a later round |
 | 104 | Merge "Prescriptions" and "Health Records" into one "My Health" screen with tabs. | Not done yet -- buildable, queued for a later round |
-| 105 | Add a mental-health support page with local helplines and a clear "this is not emergency care" note. | Not done yet -- buildable, queued for a later round |
-| 106 | Add maternal and child health content (antenatal reminders, vaccination schedule). | Not done yet -- buildable, queued for a later round |
-| 107 | Add community health tips in Pidgin and local languages. | Not done yet -- buildable, queued for a later round |
-| 108 | Add a sickle-cell, malaria, hypertension and diabetes starter set of care plans, since they are widespread. | Not done yet -- buildable, queued for a later round |
+| 105 | Add a mental-health support page with local helplines and a clear "this is not emergency care" note. | Done |
+| 106 | Add maternal and child health content (antenatal reminders, vaccination schedule). | Done |
+| 107 | Add community health tips in Pidgin and local languages. | Done |
+| 108 | Add a sickle-cell, malaria, hypertension and diabetes starter set of care plans, since they are widespread. | Done |
 | 109 | Add NIN and BVN verification for riders, sellers and high-limit wallet users (through a licensed identity provider). | Partly done -- NIN and BVN are collected and reviewed by Super Admin; automatic checks need an identity provider |
 | 110 | Add rider guarantor details with a verification call. | Done |
 | 111 | Add rider licence, vehicle papers and, where required, vehicle insurance as separate documents. | Done |
@@ -494,6 +496,46 @@ Also added: Regulatory Register (Super Admin > System), per-city delivery settin
 | 148 | Remove duplicate staff-benefit features (free telehealth visit voucher codes) until a real approval flow exists. | Not done yet -- buildable, queued for a later round |
 | 149 | Substitute the 285-flag Feature Marketplace list with a short list of toggles that actually change something; park th... | Not done yet -- buildable, queued for a later round |
 | 150 | Fix the prototype-versus-real wording: label every simulated feature (tracking, video, GPS, push) with a small "Previ... | Not done yet -- buildable, queued for a later round |
+| 151 | Add a "re-verify every 12 months" rule for licences, MDCN and PCN, with a reminder to Super Admin 30 days before expir... | Done |
+| 152 | Add a risk score on each applicant in the Verification Queue (mismatched names, reused numbers, brand-new SIM) so the ... | Done |
+| 153 | Add a two-person rule: payouts above a set amount, and approving a rider with a flagged check, need a second Super Adm... | Done |
+| 154 | Add a "why was I rejected, how do I fix it" screen for applicants, with a one-tap resubmit. | Partly done -- Rejection reason is shown to the rider; a guided resubmit screen is not built |
+| 155 | Add a service-level timer on the queue (check within 24 hours) and an alert when items are overdue. | Done |
+| 156 | Add photo selfie matching on the NIN photo for riders, through an identity provider. | Needs an outside partner or real data |
+| 157 | Add a verified-rider badge on the customer tracking screen (name, photo, plate) so customers know who is coming. | Not done yet -- buildable, queued for a later round |
+| 158 | Add a seller trust level (new, verified, trusted) that controls payout speed and listing limits. | Partly done -- Trust level and payout speed are explained to sellers; not enforced yet |
+| 159 | Add a rider "area knowledge" rating so the best riders for an area get its orders first. | Not done yet -- buildable, queued for a later round |
+| 160 | Add a landmark-photo field: the customer uploads a photo of their gate or building. | Done |
+| 161 | Add a "meet at the gate" option for estates with security, with the gate code shared only after pickup. | Done |
+| 162 | Add an estate/area delivery rule list (some estates allow deliveries only until a set hour). | Partly done -- Estate cut-off time is saved on the address; the rider app does not enforce it yet |
+| 163 | Add rider heat-maps by hour so riders know when and where to position themselves. | Not done yet -- buildable, queued for a later round |
+| 164 | Add a customer "leave with gateman" choice with a photo as proof. | Done |
+| 165 | Add a rider weekly earnings goal with a progress bar. | Done -- Already existed (weekly and monthly goals) |
+| 166 | Add a fuel and maintenance cost summary so riders see their real take-home per week. | Done |
+| 167 | Add a rider swap for broken-down vehicles: reassign the order and pay both riders fairly for their part. | Not done yet -- buildable, queued for a later round |
+| 168 | Add a night-delivery rule (a later cut-off, higher fee, and only verified riders). | Not done yet -- buildable, queued for a later round |
+| 169 | Add a seller cash-flow view: money waiting, money released, and the date each lands. | Partly done -- Seller sees available, waiting and paid-out totals; per-date release schedule not built |
+| 170 | Add a refund-reason report for Super Admin to spot sellers or riders causing repeat refunds. | Done |
+| 171 | Add a "fee preview" for sellers before they set a price, showing exactly what the customer pays. | Done |
+| 172 | Add monthly statements as a downloadable PDF for sellers and riders. | Partly done -- CSV statement for sellers; PDF and rider statements not built |
+| 173 | Add a rider cash-in-hand limit that blocks new cash-on-delivery orders until cash is paid in. | Done |
+| 174 | Add a daily reconciliation screen for Super Admin: orders, payments received, payouts due, and any gap. | Done |
+| 175 | Add saved addresses with a name and a photo ("Home gate", "Office reception"). | Done -- Already existed (Addresses screen); landmark, area and gate photo added |
+| 176 | Add a re-order button on past orders, with a note if a price changed. | Done -- Already existed (re-order buttons) |
+| 177 | Add an "estimated total with delivery" on every product card, not only at checkout. | Not done yet -- buildable, queued for a later round |
+| 178 | Add a store open/closed status that follows the seller's real hours and power-cut notices. | Not done yet -- buildable, queued for a later round |
+| 179 | Add an "item unavailable" swap: the customer picks a replacement in advance, or says "refund me". | Not done yet -- buildable, queued for a later round |
+| 180 | Add a simple order-help chat that routes by topic (late, wrong item, payment) to Support. | Not done yet -- buildable, queued for a later round |
+| 181 | Add a rider "share my trip" link customers can send to family. | Done |
+| 182 | Add an order-check for medicines: warn when a customer orders a restricted item without a verified prescription. | Not done yet -- buildable, queued for a later round |
+| 183 | Add a pharmacy cold-chain note for items that must stay cool, with a rider acknowledgement. | Not done yet -- buildable, queued for a later round |
+| 184 | Add a clear "who can see my health data" screen with one-tap revoke. | Done |
+| 185 | Add a health-emergency shortcut on the home screen for users who have already used the symptom checker. | Not done yet -- buildable, queued for a later round |
+| 186 | Add a launch checklist screen in Super Admin that ties the Regulatory Register to go/no-go for each city. | Done |
+| 187 | Add a city rollout switch: open sellers first, then riders, then customers. | Done |
+| 188 | Add a pilot-mode cap (for example 50 orders a day per city) so launch problems stay small. | Done |
+| 189 | Add a feedback button on every screen that attaches the screen name and sends it to Super Admin. | Not done yet -- buildable, queued for a later round |
+| 190 | Add a weekly "what went wrong" digest for Super Admin: late orders, rejected checks, refunds, rider no-shows. | Done |
 
 ---
 

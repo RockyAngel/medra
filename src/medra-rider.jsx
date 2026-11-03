@@ -648,7 +648,7 @@ function BusyZonesScreen({ newOrders, favoriteZones, onToggleFavorite, vehicleTy
   );
 }
 
-function DashboardScreen({ verificationHold = null, hiddenOrders = 0, vehicleType, online, setOnline, newOrders, onAccept, onReject, onBatch, activeTrip, stageIdx, onAdvance, onHandoff, kpis, onNavigate, declineLog, todayEarnings, todayOrders, favoriteZones }) {
+function DashboardScreen({ onFailedDelivery, verificationHold = null, hiddenOrders = 0, vehicleType, online, setOnline, newOrders, onAccept, onReject, onBatch, activeTrip, stageIdx, onAdvance, onHandoff, kpis, onNavigate, declineLog, todayEarnings, todayOrders, favoriteZones }) {
   const [decliningOrderId, setDecliningOrderId] = useState(null);
   const [declineReason, setDeclineReason] = useState("");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
@@ -670,6 +670,7 @@ function DashboardScreen({ verificationHold = null, hiddenOrders = 0, vehicleTyp
   const [pickupReportOpen, setPickupReportOpen] = useState(false);
   const [deliveryPhoto, setDeliveryPhoto] = useState(null);
   const [pinEntry, setPinEntry] = useState("");
+  const [waitedSince, setWaitedSince] = useState(null);
   const photoRef = useRef(null);
   const handleDeliveryPhoto = (e) => {
     const file = e.target.files?.[0];
@@ -678,7 +679,7 @@ function DashboardScreen({ verificationHold = null, hiddenOrders = 0, vehicleTyp
     reader.onload = () => setDeliveryPhoto(reader.result);
     reader.readAsDataURL(file);
   };
-  useEffect(() => { setDeliveryPhoto(null); setPinEntry(""); }, [activeTrip?.id]);
+  useEffect(() => { setDeliveryPhoto(null); setPinEntry(""); setWaitedSince(null); }, [activeTrip?.id]);
   if (activeTrip) {
     const stage = STAGES[stageIdx];
     const nextLabel = ["Confirm arrival at pickup", "Confirm items picked up", "Start heading to drop-off", "Confirm arrival at drop-off", "Complete delivery"][stageIdx];
@@ -718,6 +719,18 @@ function DashboardScreen({ verificationHold = null, hiddenOrders = 0, vehicleTyp
               </div>
             );
           })()}
+          {stageIdx === STAGES.length - 2 && (
+            <div style={{ marginTop: 12 }}>
+              {!waitedSince ? (
+                <button className="ghost-btn-sm" onClick={() => setWaitedSince(Date.now())}>Customer not answering</button>
+              ) : (
+                <div className="muted small" style={{ background: "#FEF3C7", color: "#92400E", padding: "8px 12px", borderRadius: 10 }}>
+                  Waiting started. Call and message the customer. After 10 minutes a waiting fee of ₦200 is added for you; if the customer still cannot be reached, return the order to the seller and you are paid half the delivery fee.
+                  <div style={{ marginTop: 8 }}><button className="ghost-btn-sm deny" onClick={() => confirmAction({ title: "Return this order to the seller?", message: "Only do this after you have tried to reach the customer. The order is marked as a failed delivery.", confirmLabel: "Return to seller" }, () => onFailedDelivery && onFailedDelivery())}>Return to seller (failed delivery)</button></div>
+                </div>
+              )}
+            </div>
+          )}
           {stageIdx === STAGES.length - 2 && (
             <div className="field" style={{ marginTop: 12 }}>
               <span>Delivery photo (required to mark delivered)</span>
@@ -1150,7 +1163,7 @@ function RiderTelehealthScreen({ available, telehealthSpend, onPay }) {
   );
 }
 
-function EarningsScreen({ todayEarnings, withdrawals, submitWithdrawal, telehealthSpend = 0, gearSpend = 0 }) {
+function EarningsScreen({ cashInHand = 0, cashLimit = 50000, onPayInCash, todayEarnings, withdrawals, submitWithdrawal, telehealthSpend = 0, gearSpend = 0 }) {
   const week = EARNINGS_TREND.reduce((a, b) => a + b.v, 0) - 3946 + todayEarnings - telehealthSpend - gearSpend;
   const month = MONTHLY_TREND.reduce((a, b) => a + b.v, 0) + todayEarnings - telehealthSpend - gearSpend;
   const peak = isPeakHour();
@@ -1167,8 +1180,27 @@ function EarningsScreen({ todayEarnings, withdrawals, submitWithdrawal, teleheal
   const saveGoal = () => { const n = Number(goalInput); if (n > 0) setGoal(n); setEditingGoal(false); };
   const saveMonthlyGoal = () => { const n = Number(monthlyGoalInput); if (n > 0) setMonthlyGoal(n); setEditingMonthlyGoal(false); };
   const chartData = range === "week" ? EARNINGS_TREND : MONTHLY_TREND;
+  // Rough weekly running cost: assume about 4 km out and back per delivery.
+  const weekDeliveries = 38; const weekFuel = Math.round(weekDeliveries * 4 * 2 * FUEL_COST_PER_KM); const weekMaint = 2500;
+  const cashPct = Math.min(100, Math.round((cashInHand / cashLimit) * 100));
   return (
     <div className="section-pad">
+      <div className="panel enter" style={cashInHand >= cashLimit ? { border: "1px solid #FCA5A5", background: "#FEF2F2" } : undefined}>
+        <div className="panel-title-row"><div className="panel-title">Cash in hand</div>{cashInHand > 0 && <button className="ghost-btn-sm" onClick={() => confirmAction({ title: "Pay in your cash?", message: `Confirm you have paid ${money(cashInHand)} to Medra. It clears your cash balance.`, confirmLabel: "I have paid it in" }, () => onPayInCash && onPayInCash())}>I have paid it in</button>}</div>
+        <div className="cat-top" style={{ marginBottom: 8 }}><span className="muted">{money(cashInHand)} of {money(cashLimit)} limit</span><span className="mono" style={{ fontWeight: 700 }}>{cashPct}%</span></div>
+        <div className="bar-track"><div className="bar-fill-h" style={{ width: `${cashPct}%`, background: cashPct >= 100 ? "#DC2626" : cashPct >= 80 ? "#EA580C" : "#16A34A" }} /></div>
+        <div className="muted small" style={{ marginTop: 8 }}>{cashInHand >= cashLimit ? "You are at your limit. New cash-on-delivery orders are hidden until you pay in." : "Cash you collect from customers belongs to Medra. Pay it in before you reach the limit, or cash orders stop showing."}</div>
+      </div>
+      <div className="panel enter">
+        <div className="panel-title">What you really take home this week</div>
+        <div className="list-col">
+          <div className="cat-top"><span className="muted">Earnings</span><span className="mono">{money(week)}</span></div>
+          <div className="cat-top"><span className="muted">Fuel (about {weekDeliveries} deliveries)</span><span className="mono">-{money(weekFuel)}</span></div>
+          <div className="cat-top"><span className="muted">Maintenance set aside</span><span className="mono">-{money(weekMaint)}</span></div>
+          <div className="cat-top" style={{ fontWeight: 700 }}><span>Take-home</span><span className="mono">{money(Math.max(0, week - weekFuel - weekMaint))}</span></div>
+        </div>
+        <div className="muted small" style={{ marginTop: 6 }}>An estimate: fuel uses the ₦{FUEL_COST_PER_KM} per km rate and about 4 km each way. Your real costs may differ.</div>
+      </div>
       <div className="panel enter">
         <div className="panel-title-row">
           <div className="panel-title">Weekly earnings goal</div>
@@ -1451,7 +1483,7 @@ function BankAccountModal({ current, onClose, onSave }) {
         </div>
         <div className="field" style={{ marginBottom: 10 }}><span>Account number</span><input type="text" inputMode="numeric" maxLength={10} value={accountNumber} onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ""))} placeholder="10-digit account number" /></div>
         <div className="field" style={{ marginBottom: 16 }}><span>Account holder name</span><input type="text" value={accountName} onChange={(e) => setAccountName(e.target.value)} placeholder="Must match your bank account" /></div>
-        {accountNumber.length === 10 && accountName.trim() && <div className="muted small" style={{ marginBottom: 12 }}>Name check: Super Admin confirms this name matches your BVN before your first payout. Payouts stay on hold until then.</div>}
+        {accountNumber.length === 10 && accountName.trim() && <div className="muted small" style={{ marginBottom: 12 }}>Name check: Admin confirms this name matches your BVN before your first payout. Payouts stay on hold until then.</div>}
         <button className="primary-btn-sm wide" disabled={!valid} onClick={() => { onSave({ bank, last4: accountNumber.slice(-4), accountName }); onClose(); }}>Save payout account</button>
       </div>
     </div>
@@ -2306,7 +2338,7 @@ function RiderDocFields({ docs, setDocs }) {
       <label className="field"><span>Vehicle plate number</span><input type="text" value={docs.plate} onChange={up("plate")} placeholder="e.g. LSR 123 AB" required /></label>
       <label className="field"><span>Guarantor full name</span><input type="text" value={docs.gName} onChange={up("gName")} required /></label>
       <label className="field"><span>Guarantor phone</span><input type="tel" inputMode="numeric" value={docs.gPhone} onChange={(e) => setDocs((d) => ({ ...d, gPhone: e.target.value.replace(/\D/g, "").slice(0, 11) }))} placeholder="080..." required /></label>
-      <div className="muted small">Super Admin double-checks your NIN, BVN, licence, vehicle papers and guarantor (we may call your guarantor) before you can go online.</div>
+      <div className="muted small">Admin double-checks your NIN, BVN, licence, vehicle papers and guarantor (we may call your guarantor) before you can go online.</div>
     </>
   );
 }
@@ -2416,6 +2448,9 @@ export default function MedraRiderApp({ sharedAuthed, onAuth, onLogout, sharedOr
     return () => clearTimeout(t);
   }, [authed]);
   const [online, setOnline] = useState(false);
+  const CASH_LIMIT = 50000;
+  const [cashInHand, setCashInHand] = useState(32000);
+  const [unreachableNote, setUnreachableNote] = useState(null);
   const [newOrders, setNewOrders] = useState(NEW_ORDERS_POOL);
   const [activeTrip, setActiveTrip] = useState(null);
   const [stageIdx, setStageIdx] = useState(0);
@@ -2441,13 +2476,15 @@ export default function MedraRiderApp({ sharedAuthed, onAuth, onLogout, sharedOr
   const [shiftReminder, setShiftReminder] = useState(true);
   const [vehicleType, setVehicleType] = useState("bike");
   // Only offers this vehicle can carry are shown; the rest are hidden, not rejected.
-  const visibleOrders = newOrders.filter((o) => vehicleFits(vehicleType, o.sizeKey));
+  // New cash-on-delivery orders are hidden once the rider holds the cash limit.
+  const cashBlocked = cashInHand >= CASH_LIMIT;
+  const visibleOrders = newOrders.filter((o) => vehicleFits(vehicleType, o.sizeKey) && !(cashBlocked && o.cod));
   const hiddenOrders = newOrders.length - visibleOrders.length;
   // In the combined preview, a rider who just signed up cannot go online until Super Admin has verified every check.
   const myChecks = (sharedOrderStore?.verifications || []).filter((v) => v.role === "Rider");
   const verificationHold = myChecks.length === 0 ? null
-    : myChecks.some((v) => v.status === "rejected") ? "Super Admin rejected one of your documents. Resubmit it to go online."
-    : myChecks.some((v) => v.status !== "verified") ? `Waiting for Super Admin to verify your documents (${myChecks.filter((v) => v.status === "verified").length} of ${myChecks.length} checked). You can go online once all are approved.` : null;
+    : myChecks.some((v) => v.status === "rejected") ? `Admin rejected your ${myChecks.find((v) => v.status === "rejected").check}${myChecks.find((v) => v.status === "rejected").rejectReason ? ` (${myChecks.find((v) => v.status === "rejected").rejectReason})` : ""}. Fix it and sign up again with the correct document to go online.`
+    : myChecks.some((v) => v.status !== "verified") ? `Waiting for Admin to verify your documents (${myChecks.filter((v) => v.status === "verified").length} of ${myChecks.length} checked). You can go online once all are approved.` : null;
   const [notifications, setNotifications] = useState(NOTIFICATIONS);
   const [shiftReminderSent, setShiftReminderSent] = useState(false);
   useEffect(() => {
@@ -2498,9 +2535,16 @@ export default function MedraRiderApp({ sharedAuthed, onAuth, onLogout, sharedOr
     if (stageIdx >= STAGES.length - 2) {
       setTodayEarnings((e) => e + riderPayout(activeTrip.deliveryFee));
       setTodayOrders((n) => n + 1);
+      if (activeTrip.cod) setCashInHand((c) => c + (activeTrip.codAmount || 0));
       setActiveTrip(null);
       setStageIdx(0);
     } else setStageIdx((i) => i + 1);
+  };
+  const onFailedDelivery = () => {
+    setTodayEarnings((e) => e + Math.round(riderPayout(activeTrip.deliveryFee) * 0.5));
+    setUnreachableNote(`${activeTrip.id} is going back to the seller. You are paid half the delivery fee for the trip.`);
+    setActiveTrip(null); setStageIdx(0);
+    setTimeout(() => setUnreachableNote(null), 4200);
   };
   const onHandoff = (riderName) => {
     setHandoffNotice(`${activeTrip.id} handed off to ${riderName} -- no penalty to you.`);
@@ -2513,14 +2557,14 @@ export default function MedraRiderApp({ sharedAuthed, onAuth, onLogout, sharedOr
   const activeLabel = NAV_ITEMS.find((i) => i.key === active)?.label || "Dashboard";
 
   const SCREENS = {
-    dashboard: appLoading ? <DashboardSkeleton /> : <DashboardScreen online={online} setOnline={setOnline} newOrders={visibleOrders} verificationHold={verificationHold} hiddenOrders={hiddenOrders} vehicleType={vehicleType} onAccept={onAccept} onReject={onReject} onBatch={onBatch} activeTrip={activeTrip} stageIdx={stageIdx} onAdvance={onAdvance} onHandoff={onHandoff} kpis={dynamicKpis} onNavigate={setActive} declineLog={declineLog} todayEarnings={todayEarnings} todayOrders={todayOrders} favoriteZones={favoriteZones} />,
-    "new-orders": <DashboardScreen online={online} setOnline={setOnline} newOrders={visibleOrders} verificationHold={verificationHold} hiddenOrders={hiddenOrders} vehicleType={vehicleType} onAccept={onAccept} onReject={onReject} onBatch={onBatch} activeTrip={activeTrip} stageIdx={stageIdx} onAdvance={onAdvance} onHandoff={onHandoff} kpis={dynamicKpis} onNavigate={setActive} declineLog={declineLog} todayEarnings={todayEarnings} todayOrders={todayOrders} favoriteZones={favoriteZones} />,
+    dashboard: appLoading ? <DashboardSkeleton /> : <DashboardScreen online={online} setOnline={setOnline} newOrders={visibleOrders} verificationHold={verificationHold} onFailedDelivery={onFailedDelivery} hiddenOrders={hiddenOrders} vehicleType={vehicleType} onAccept={onAccept} onReject={onReject} onBatch={onBatch} activeTrip={activeTrip} stageIdx={stageIdx} onAdvance={onAdvance} onHandoff={onHandoff} kpis={dynamicKpis} onNavigate={setActive} declineLog={declineLog} todayEarnings={todayEarnings} todayOrders={todayOrders} favoriteZones={favoriteZones} />,
+    "new-orders": <DashboardScreen online={online} setOnline={setOnline} newOrders={visibleOrders} verificationHold={verificationHold} onFailedDelivery={onFailedDelivery} hiddenOrders={hiddenOrders} vehicleType={vehicleType} onAccept={onAccept} onReject={onReject} onBatch={onBatch} activeTrip={activeTrip} stageIdx={stageIdx} onAdvance={onAdvance} onHandoff={onHandoff} kpis={dynamicKpis} onNavigate={setActive} declineLog={declineLog} todayEarnings={todayEarnings} todayOrders={todayOrders} favoriteZones={favoriteZones} />,
     "busy-zones": <BusyZonesScreen newOrders={visibleOrders} favoriteZones={favoriteZones} onToggleFavorite={toggleFavoriteZone} vehicleType={vehicleType} />,
     "shared-deliveries": <SharedDeliveriesSection vehicleType={vehicleType} sharedOrderStore={sharedOrderStore} setTodayEarnings={setTodayEarnings} setTodayOrders={setTodayOrders} />,
     profile: <ProfileScreen />,
     refer: <ReferScreen points={riderPoints} setPoints={setRiderPoints} referrals={riderReferrals} setReferrals={setRiderReferrals} lifetimeTrips={1284} milestone50Claimed={milestone50Claimed} setMilestone50Claimed={setMilestone50Claimed} />,
     deliveries: <DeliveriesScreen />,
-    earnings: <EarningsScreen todayEarnings={todayEarnings} withdrawals={withdrawals} submitWithdrawal={submitWithdrawal} telehealthSpend={telehealthSpend} gearSpend={gearSpend} />,
+    earnings: <EarningsScreen cashInHand={cashInHand} cashLimit={CASH_LIMIT} onPayInCash={() => setCashInHand(0)} todayEarnings={todayEarnings} withdrawals={withdrawals} submitWithdrawal={submitWithdrawal} telehealthSpend={telehealthSpend} gearSpend={gearSpend} />,
     telehealth: <RiderTelehealthScreen available={EARNINGS_TREND.reduce((a, b) => a + b.v, 0) - 3946 + todayEarnings - telehealthSpend - gearSpend} telehealthSpend={telehealthSpend} onPay={(fee) => setTelehealthSpend((s) => s + fee)} />,
     gear: <GearMarketplaceScreen available={EARNINGS_TREND.reduce((a, b) => a + b.v, 0) - 3946 + todayEarnings - telehealthSpend - gearSpend} orders={gearOrders} onPurchase={(total, items) => { setGearSpend((s) => s + total); setGearOrders((o) => [{ items, total, date: "Just now" }, ...o]); }} />,
     schedule: <ScheduleScreen />,
@@ -2540,6 +2584,7 @@ export default function MedraRiderApp({ sharedAuthed, onAuth, onLogout, sharedOr
       <style>{CSS}</style>
       {switchNotice && <div className="switch-toast"><ShieldCheck size={14} /> {switchNotice}</div>}
       {handoffNotice && <div className="switch-toast"><RefreshCw size={14} /> {handoffNotice}</div>}
+      {unreachableNote && <div className="switch-toast"><AlertTriangle size={14} /> {unreachableNote}</div>}
       <div className="desk-shell">
         <div className={`sidebar dark-green ${mobileNavOpen ? "mobile-open" : ""}`}>
           <div className="sidebar-head"><Logo /></div>

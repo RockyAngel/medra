@@ -630,6 +630,7 @@ const NAV_ITEMS = [
   { key: "health-appointments", label: "My Appointments", icon: CalendarClock, group: "health" },
   { key: "health-prescriptions", label: "Prescriptions", icon: Pill, group: "health" },
   { key: "health-documents", label: "Health Records", icon: FileText, group: "health" },
+  { key: "health-guides", label: "Health Guides", icon: HeartPulse, group: "health" },
   { key: "health-messages", label: "Health Messages", icon: MessageCircle, group: "health" },
   { key: "health-provider-portal", label: "Provider Portal (Preview)", icon: Stethoscope, group: "preview" },
   { key: "product-drafts", label: "Product Drafts", icon: Target },
@@ -1023,6 +1024,68 @@ function getVisitCost(provider, telehealthPlan, voucherApplied, { consultType, s
   return { amount, coveredBy: "per_visit" };
 }
 
+const HEALTH_GUIDES = {
+  "Mental health": {
+    note: "This page is support and information. It is not emergency care.",
+    items: [
+      ["Feeling low, anxious or overwhelmed", "You are not alone, and it is common. Talk to someone you trust today. A doctor or counsellor on Medra can talk with you in private."],
+      ["Sleep, food and movement", "Small things help: regular sleep, a proper meal, a short walk, and time away from your phone before bed."],
+      ["If you are thinking of harming yourself", "Please go to the nearest hospital now, or ask someone you trust to come and stay with you. You do not have to handle this alone."],
+      ["Helping a friend", "Listen without judging, stay with them, and help them speak to a doctor or counsellor."],
+    ],
+  },
+  "Mum and baby": {
+    note: "General guidance. Your clinic or health worker may advise differently for you.",
+    items: [
+      ["Antenatal care", "Start antenatal visits as early as you can and keep every appointment your health worker gives you. Ask about iron, folic acid and malaria protection."],
+      ["Danger signs in pregnancy", "Heavy bleeding, severe headache, blurred vision, swelling of face or hands, fits, reduced baby movement or leaking fluid: go to the nearest hospital now."],
+      ["Baby's vaccines (usual Nigerian schedule)", "At birth: BCG, polio and hepatitis B. At 6, 10 and 14 weeks: polio, pentavalent, pneumococcal and rotavirus doses. At 9 months: measles, yellow fever and meningitis A. Vitamin A from 6 months. Confirm dates with your clinic."],
+      ["Feeding", "Breast milk alone for the first 6 months if you can, then add soft foods. Ask your clinic for help if feeding is hard."],
+    ],
+  },
+  "Common conditions": {
+    note: "General information, not a diagnosis. See a provider for your own care plan.",
+    items: [
+      ["Malaria", "Fever, chills, headache and body pain can be malaria. Get tested before you treat, and see a provider the same day for children and pregnant women. Sleep under a treated net."],
+      ["High blood pressure", "Check your pressure regularly, cut back on salt and heavy drinking, stay active and take your medicine every day even when you feel well."],
+      ["Diabetes", "Check your sugar as advised, watch sugary drinks and large portions of starch, and never stop medicine without your provider's advice. Take cuts and sores on the feet seriously."],
+      ["Sickle cell", "Drink plenty of water, avoid getting very cold or very tired, take your daily medicines, and go to hospital quickly for a pain crisis, fever or breathing trouble."],
+    ],
+  },
+  "In Pidgin": {
+    note: "Simple tips for everybody. If body dey worry you, see doctor.",
+    items: [
+      ["Fever", "If fever dey, no just buy drug drink. Go test for malaria first. If na pikin or pregnant woman, go clinic same day."],
+      ["Water and food", "Drink clean water well well. Wash your hand before you chop and after you use toilet."],
+      ["Blood pressure", "Reduce salt for your food. Check your pressure from time to time. If doctor give you drug, no stop am by yourself."],
+      ["If e serious", "If person faint, no fit breathe well, or blood no dey stop, no wait. Carry the person go nearest hospital sharp sharp."],
+    ],
+  },
+};
+function HealthGuidesScreen({ onNavigate }) {
+  const [tab, setTab] = useState("Mental health");
+  const g = HEALTH_GUIDES[tab];
+  return (
+    <div className="section-pad">
+      <div className="panel enter">
+        <div className="panel-title">Health Guides</div>
+        <div className="cat-top" style={{ gap: 6, flexWrap: "wrap", margin: "8px 0 12px" }}>
+          {Object.keys(HEALTH_GUIDES).map((k) => <button key={k} className={`ghost-btn-sm ${tab === k ? "active" : ""}`} style={tab === k ? { background: "#F3EEFF", border: "1px solid var(--purple)" } : undefined} onClick={() => setTab(k)}>{k}</button>)}
+        </div>
+        <div className="muted small" style={{ marginBottom: 10, color: "#B45309" }}><AlertTriangle size={12} style={{ verticalAlign: "middle", marginRight: 4 }} />{g.note} In an emergency, go to the nearest hospital straight away.</div>
+        <div className="list-col">
+          {g.items.map(([t, d]) => (
+            <div key={t} className="pending-row" style={{ flexDirection: "column", alignItems: "stretch", gap: 2 }}>
+              <div className="card-name">{t}</div><div className="muted">{d}</div>
+            </div>
+          ))}
+        </div>
+        <button className="primary-btn-sm" style={{ marginTop: 12 }} onClick={() => onNavigate("health-provider-search")}>Talk to a provider</button>
+      </div>
+    </div>
+  );
+}
+
 function HealthcareHomeScreen({ onNavigate, appointments, telehealthPlan }) {
   const upcoming = appointments.filter((a) => a.status === "upcoming");
   const actions = [
@@ -1031,6 +1094,7 @@ function HealthcareHomeScreen({ onNavigate, appointments, telehealthPlan }) {
     { key: "health-appointments", label: "My Appointments", icon: CalendarClock, desc: `${upcoming.length} upcoming` },
     { key: "health-prescriptions", label: "Prescriptions", icon: Pill, desc: "View your prescriptions" },
     { key: "health-documents", label: "Health Records", icon: FileDown, desc: "Lab results, referrals, notes" },
+    { key: "health-guides", label: "Health Guides", icon: HeartPulse, desc: "Mental health, mum and baby, common conditions" },
     { key: "health-messages", label: "Health Messages", icon: MessageCircle, desc: "Message your doctors and pharmacists" },
   ];
   return (
@@ -3165,6 +3229,7 @@ function DeliveryPinPanel({ order }) {
       <div className="panel-title" style={{ fontSize: 13 }}>Your delivery code</div>
       <div className="mono" style={{ fontSize: 28, letterSpacing: 6, margin: "6px 0" }}>{deliveryPin(order.id)}</div>
       <div className="muted small">Tell this code to the rider only when you have your order in hand. It proves the order reached you.</div>
+      <a className="ghost-btn-sm" style={{ marginTop: 10, display: "inline-block" }} href={`https://wa.me/?text=${encodeURIComponent("I have a Medra delivery on the way (order " + order.id + "). Rider details and live status will show on my Track Order screen.")}`} target="_blank" rel="noreferrer">Share this trip with family on WhatsApp</a>
     </div>
   );
 }
@@ -6297,18 +6362,42 @@ function MessagesScreen() {
   );
 }
 
+const DELIVERY_AREAS = {
+  Lagos: ["Lekki Phase 1", "Victoria Island", "Ikoyi", "Yaba", "Surulere", "Ikeja GRA", "Ajah", "Maryland", "Gbagada", "Ikorodu"],
+  Abuja: ["Wuse 2", "Garki", "Maitama", "Asokoro", "Gwarinpa", "Jabi", "Kubwa"],
+  Kano: ["Nassarawa GRA", "Bompai", "Sabon Gari", "Tarauni"],
+  "Port Harcourt": ["GRA Phase 2", "Rumuola", "Trans Amadi", "Diobu"],
+};
+const HANDOVER_CHOICES = ["Hand it to me", "Meet me at the gate", "Leave with the gateman (rider takes a photo)"];
 function AddAddressModal({ onAdd, onClose }) {
   const [label, setLabel] = useState("");
   const [addr, setAddr] = useState("");
+  const [city, setCity] = useState("Lagos");
+  const [area, setArea] = useState(DELIVERY_AREAS.Lagos[0]);
+  const [landmark, setLandmark] = useState("");
+  const [gatePhoto, setGatePhoto] = useState("");
+  const [handover, setHandover] = useState(HANDOVER_CHOICES[0]);
+  const [cutoff, setCutoff] = useState("");
   const canSave = label.trim() && addr.trim();
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="confirm-modal enter" onClick={(e) => e.stopPropagation()}>
+      <div className="confirm-modal enter" style={{ maxHeight: "88vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
         <button className="modal-close" onClick={onClose}><X size={16} /></button>
         <div className="card-name" style={{ fontSize: 16, marginBottom: 12 }}>Add a new address</div>
         <div className="field" style={{ marginBottom: 10 }}><span>Label</span><input type="text" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Office, Mum's House" /></div>
-        <div className="field" style={{ marginBottom: 16 }}><span>Full address</span><input type="text" value={addr} onChange={(e) => setAddr(e.target.value)} placeholder="Street, area, city" /></div>
-        <button className="primary-btn-sm wide" disabled={!canSave} onClick={() => { onAdd({ label, addr, primary: false }); onClose(); }}>Save address</button>
+        <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+          <div className="field" style={{ flex: 1 }}><span>City</span><select className="sort-select" value={city} onChange={(e) => { setCity(e.target.value); setArea(DELIVERY_AREAS[e.target.value][0]); }}>{Object.keys(DELIVERY_AREAS).map((c) => <option key={c}>{c}</option>)}</select></div>
+          <div className="field" style={{ flex: 1 }}><span>Area</span><select className="sort-select" value={area} onChange={(e) => setArea(e.target.value)}>{DELIVERY_AREAS[city].map((a) => <option key={a}>{a}</option>)}</select></div>
+        </div>
+        <div className="field" style={{ marginBottom: 10 }}><span>Street and house number</span><input type="text" value={addr} onChange={(e) => setAddr(e.target.value)} placeholder="e.g. 12 Admiralty Way" /></div>
+        <div className="field" style={{ marginBottom: 10 }}><span>Landmark (helps the rider find you)</span><input type="text" value={landmark} onChange={(e) => setLandmark(e.target.value)} placeholder="e.g. Opposite the blue gate, near Total filling station" /></div>
+        <label className="field" style={{ marginBottom: 10 }}><span>Photo of your gate or building (optional)</span>
+          <input type="file" accept="image/*" onChange={(e) => setGatePhoto(e.target.files?.[0]?.name || "")} />
+          {gatePhoto && <span className="muted small">Added: {gatePhoto}</span>}
+        </label>
+        <div className="field" style={{ marginBottom: 10 }}><span>How should the rider hand over?</span><select className="sort-select" value={handover} onChange={(e) => setHandover(e.target.value)}>{HANDOVER_CHOICES.map((h) => <option key={h}>{h}</option>)}</select></div>
+        <div className="field" style={{ marginBottom: 16 }}><span>Estate allows deliveries until (optional)</span><input type="time" value={cutoff} onChange={(e) => setCutoff(e.target.value)} /></div>
+        <button className="primary-btn-sm wide" disabled={!canSave} onClick={() => { onAdd({ label, addr: `${addr}, ${area}, ${city}`, landmark, gatePhoto, handover, cutoff, primary: false }); onClose(); }}>Save address</button>
       </div>
     </div>
   );
@@ -6331,7 +6420,11 @@ function AddressesScreen({ onToast }) {
             <div key={a.label} className="pending-row" style={{ flexDirection: "column", alignItems: "stretch", gap: 6 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <MapPin size={15} />
-                <div className="ti-mid"><div className="card-name">{a.label} {a.primary && <span className="status-pill done">Primary</span>}</div><div className="muted">{a.addr}</div></div>
+                <div className="ti-mid"><div className="card-name">{a.label} {a.primary && <span className="status-pill done">Primary</span>}</div><div className="muted">{a.addr}</div>
+                  {a.landmark && <div className="muted small">Landmark: {a.landmark}</div>}
+                  {a.gatePhoto && <div className="muted small">Gate photo: {a.gatePhoto}</div>}
+                  {a.handover && a.handover !== HANDOVER_CHOICES[0] && <div className="muted small">Handover: {a.handover}</div>}
+                  {a.cutoff && <div className="muted small">Deliveries accepted until {a.cutoff}</div>}</div>
               </div>
               {editingLabel === a.label ? (
                 <div style={{ display: "flex", gap: 6, marginLeft: 25 }}>
@@ -6718,7 +6811,34 @@ function AccountCenterScreen({ onNavigate }) {
   );
 }
 
-function SettingsScreen({ onOpenThemes, showMyPhoto, setShowMyPhoto, onReplayTour, onApply, onOpenLegal, textSize, setTextSize, darkMode, setDarkMode, darkModeAuto, setDarkModeAuto, showCreatorProgram, setShowCreatorProgram, leaderboardAnon, setLeaderboardAnon, reduceMotion, setReduceMotion, onExportActivity, unitPref, setUnitPref, onOpenNotifications }) {
+function DataPrivacyPanel({ onToast }) {
+  const [share, setShare] = useState({ providers: true, pharmacies: true, family: false });
+  const toggle = (k) => setShare((x) => ({ ...x, [k]: !x[k] }));
+  const download = () => {
+    const data = { exportedAt: new Date().toISOString(), note: "Preview export. Real data arrives once Medra has a backend.", healthSharing: share };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+    const a = document.createElement("a"); a.href = url; a.download = "my-medra-data.json"; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    onToast?.("Your data file is downloading");
+  };
+  return (
+    <div className="panel enter">
+      <div className="panel-title">Your data and privacy</div>
+      <div className="muted small" style={{ marginBottom: 10 }}>You choose who can see your health information. You can download your data or ask us to delete it at any time. Preview build: the privacy wording is still to be reviewed by a Nigerian lawyer.</div>
+      <div className="list-col">
+        {[["providers", "Doctors I have booked can see my health records"], ["pharmacies", "Pharmacies can see my prescriptions when I order"], ["family", "A family member I choose can see my appointments"]].map(([k, label]) => (
+          <div key={k} className="flag-row"><div className="ti-mid"><div className="card-name">{label}</div></div>
+            <button className={`toggle-mini ${share[k] ? "on" : ""}`} onClick={() => toggle(k)}><span /></button></div>
+        ))}
+      </div>
+      <div className="cat-top" style={{ gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+        <button className="ghost-btn-sm" onClick={download}>Download my data</button>
+        <button className="ghost-btn-sm deny" onClick={() => confirmAction({ title: "Ask us to delete your data?", message: "We will review the request, and some records may have to be kept by law. You will get a reply by message.", confirmLabel: "Send request" }, () => onToast?.("Deletion request sent"))}>Delete my data</button>
+      </div>
+    </div>
+  );
+}
+
+function SettingsScreen({ onOpenThemes, showMyPhoto, setShowMyPhoto, onReplayTour, onApply, onOpenLegal, textSize, setTextSize, darkMode, setDarkMode, darkModeAuto, setDarkModeAuto, showCreatorProgram, setShowCreatorProgram, leaderboardAnon, setLeaderboardAnon, reduceMotion, setReduceMotion, onExportActivity, unitPref, setUnitPref, onOpenNotifications, onToast }) {
   const [language, setLanguage] = useState("English");
   const [langOpen, setLangOpen] = useState(false);
   const [walkthroughOpen, setWalkthroughOpen] = useState(false);
@@ -6755,6 +6875,7 @@ function SettingsScreen({ onOpenThemes, showMyPhoto, setShowMyPhoto, onReplayTou
           <div className="flag-row"><Camera size={15} /><div className="ti-mid"><div className="card-name">Show my photo on my birthday</div><div className="muted">Let other customers see your photo when it's your turn to be the celebrant</div></div>
             <button className={`toggle-mini ${showMyPhoto ? "on" : ""}`} onClick={() => setShowMyPhoto((s) => !s)}><span /></button>
           </div>
+          <div style={{ marginBottom: 8 }}><DataPrivacyPanel onToast={onToast} /></div>
           <button className="flag-row nav-flag" onClick={onReplayTour}><RefreshCw size={15} /><div className="ti-mid"><div className="card-name">Replay welcome tour</div><div className="muted">See the quick intro to points, themes, and rewards again</div></div><ChevronRight size={15} /></button>
           <button className="flag-row nav-flag" onClick={onExportActivity}><FileDown size={15} /><div className="ti-mid"><div className="card-name">Export my activity</div><div className="muted">Download a CSV of your orders and points history</div></div><ChevronRight size={15} /></button>
           <button className="flag-row nav-flag" onClick={onOpenNotifications}><Bell size={15} /><div className="ti-mid"><div className="card-name">Notifications</div><div className="muted">Categories and preferences</div></div><ChevronRight size={15} /></button>
@@ -8688,6 +8809,7 @@ export default function MedraApp({ sharedAuthed, onAuth, onLogout, sharedOrderSt
     "health-appointments": <MyAppointmentsScreen appointments={healthAppointments} onFindProvider={() => setActive("health-provider-search")} onStartConsultation={(a) => { setActiveHealthAppointment(a); setActive("health-consultation"); }} onReschedule={rescheduleHealthAppointment} onCancel={(id) => confirmAction({ title: "Cancel this appointment?", message: "Your provider will be told, and the slot will be released.", confirmLabel: "Cancel appointment" }, () => cancelHealthAppointment(id))} />,
     "health-consultation": <ConsultationRoomScreen appointment={activeHealthAppointment} onEnd={() => { if (activeHealthAppointment) completeHealthAppointment(activeHealthAppointment.id); setActive("health-appointments"); }} />,
     "health-prescriptions": <HealthPrescriptionsScreen prescriptions={healthPrescriptions} onAddPrescription={(rx) => setHealthPrescriptions((p) => [rx, ...p])} />,
+    "health-guides": <HealthGuidesScreen onNavigate={setActive} />,
     "health-documents": <HealthDocumentsScreen documents={healthDocuments} onAddDocument={(d) => setHealthDocuments((docs) => [d, ...docs])} />,
     "health-messages": <HealthMessagesScreen providers={MOCK_PROVIDERS} conversations={healthConversations} onSend={sendHealthMessage} getMessageCost={getHealthMessageCost} points={points} />,
     "health-provider-portal": <ProviderPortalScreen providerId={MOCK_PROVIDERS[0].id} appointments={healthAppointments} onAccept={acceptHealthAppointment} onDecline={declineHealthAppointment} conversations={healthConversations} onSend={sendHealthMessage} onCreatePrescription={createHealthPrescription} telehealthEarnings={healthAppointments.filter((a) => a.providerId === MOCK_PROVIDERS[0].id && a.status === "completed").reduce((s, a) => s + (a.providerNet || 0), 0)} />,
@@ -8728,7 +8850,7 @@ export default function MedraApp({ sharedAuthed, onAuth, onLogout, sharedOrderSt
     addresses: <AddressesScreen onToast={showToast} />,
     "payment-methods": <PaymentMethodsScreen cards={cards} setCards={setCards} />,
     subscriptions: <SubscriptionsScreen subscriptions={subscriptions} wallet={wallet} onCharge={chargeSubscription} onCancel={(id) => confirmAction({ title: "Cancel this subscription?", message: "Future auto-reorders will stop.", confirmLabel: "Cancel subscription" }, () => cancelSubscription(id))} onPause={(id) => setSubscriptions((s) => s.map((x) => x.id === id ? { ...x, paused: true } : x))} onResume={(id) => setSubscriptions((s) => s.map((x) => x.id === id ? { ...x, paused: false } : x))} onPauseAll={() => { setSubscriptions((s) => s.map((x) => x.active ? { ...x, paused: true } : x)); showToast("All subscriptions paused"); }} onResumeAll={() => { setSubscriptions((s) => s.map((x) => x.active ? { ...x, paused: false } : x)); showToast("All subscriptions resumed"); }} />,
-    settings: <SettingsScreen onOpenThemes={() => setActive("themes")} showMyPhoto={showMyPhoto} setShowMyPhoto={setShowMyPhoto} onReplayTour={replayTour} onApply={(role) => { setApplyRole(role); setActive("apply"); }} onOpenLegal={(doc) => { setLegalDoc(doc); setActive("legal"); }} textSize={textSize} setTextSize={setTextSize} darkMode={darkMode} setDarkMode={setDarkMode} darkModeAuto={darkModeAuto} setDarkModeAuto={setDarkModeAuto} showCreatorProgram={showCreatorProgram} setShowCreatorProgram={setShowCreatorProgram} leaderboardAnon={leaderboardAnon} setLeaderboardAnon={setLeaderboardAnon} reduceMotion={reduceMotion} setReduceMotion={setReduceMotion} onExportActivity={exportActivity} unitPref={unitPref} setUnitPref={setUnitPref} onOpenNotifications={() => setActive("notifications")} />,
+    settings: <SettingsScreen onToast={showToast} onOpenThemes={() => setActive("themes")} showMyPhoto={showMyPhoto} setShowMyPhoto={setShowMyPhoto} onReplayTour={replayTour} onApply={(role) => { setApplyRole(role); setActive("apply"); }} onOpenLegal={(doc) => { setLegalDoc(doc); setActive("legal"); }} textSize={textSize} setTextSize={setTextSize} darkMode={darkMode} setDarkMode={setDarkMode} darkModeAuto={darkModeAuto} setDarkModeAuto={setDarkModeAuto} showCreatorProgram={showCreatorProgram} setShowCreatorProgram={setShowCreatorProgram} leaderboardAnon={leaderboardAnon} setLeaderboardAnon={setLeaderboardAnon} reduceMotion={reduceMotion} setReduceMotion={setReduceMotion} onExportActivity={exportActivity} unitPref={unitPref} setUnitPref={setUnitPref} onOpenNotifications={() => setActive("notifications")} />,
     notifications: <NotificationsCenterScreen notifList={notifList} categoryPrefs={notifCategoryPrefs} setCategoryPrefs={setNotifCategoryPrefs} onOpen={setActive} pushPermission={pushPermission} onRequestPush={() => setPushPromptOpen(true)} />,
     "account-center": <AccountCenterScreen onNavigate={setActive} />,
     "favorite-stores": <FavoriteStoresScreen favoriteStores={favoriteStores} onOpenStore={(name) => setOpenStore(SAVED_STORES.find((s) => s.name === name) || { name, category: "", rating: 4.5 })} onToggleFavorite={toggleFavoriteStore} notifyStores={notifyStores} onToggleNotify={toggleNotifyStore} />,

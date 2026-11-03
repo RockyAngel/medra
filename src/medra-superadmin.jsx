@@ -560,6 +560,9 @@ const NAV_SECTIONS = [
     { key: "app-settings", label: "App Settings", icon: SlidersHorizontal },
     { key: "data-retention", label: "Data Retention", icon: Database },
     { key: "regulatory", label: "Regulatory Register", icon: ScrollText },
+    { key: "launch", label: "Launch & Rollout", icon: Navigation },
+    { key: "recon", label: "Daily Reconciliation", icon: ArrowLeftRight },
+    { key: "digest", label: "Weekly Digest", icon: FileBarChart },
     { key: "platform-tools", label: "Platform Tools", icon: Wrench },
     { key: "platform-logs", label: "Audit Center", icon: Activity },
     { key: "system-health", label: "System Health", icon: Server },
@@ -1117,41 +1120,64 @@ const VERIFICATION_CHECKS = ["NIN", "BVN", "Driver's licence", "Vehicle papers",
 const VERIFICATION_SEED = [
   { id: "V101", applicant: "Devon K.", role: "Rider", check: "NIN", detail: "NIN *******4821", note: "", submitted: "1 day ago", status: "pending" },
   { id: "V102", applicant: "Devon K.", role: "Rider", check: "BVN", detail: "BVN *******7390", note: "Name on BVN differs from NIN (middle name)", submitted: "1 day ago", status: "pending" },
-  { id: "V103", applicant: "Devon K.", role: "Rider", check: "Driver's licence", detail: "Licence photo uploaded, expires 03/2028", note: "", submitted: "1 day ago", status: "pending" },
+  { id: "V103", applicant: "Devon K.", role: "Rider", check: "Driver's licence", detail: "Licence photo uploaded", expires: "2028-03-31", note: "", submitted: "1 day ago", hrs: 26, status: "pending" },
   { id: "V104", applicant: "Devon K.", role: "Rider", check: "Guarantor", detail: "Ngozi K. (sister), 0803 *** 4412", note: "Verification call not done yet", submitted: "1 day ago", status: "pending" },
   { id: "V105", applicant: "Bright Pharmacy", role: "Seller", check: "CAC / RC number", detail: "RC 1458XXX", note: "", submitted: "2 days ago", status: "pending" },
   { id: "V106", applicant: "Bright Pharmacy", role: "Seller", check: "PCN licence", detail: "Premises licence photo uploaded", note: "", submitted: "2 days ago", status: "pending" },
   { id: "V107", applicant: "Bright Pharmacy", role: "Seller", check: "NAFDAC", detail: "3 product registrations listed", note: "One number looks reused from another seller", submitted: "2 days ago", status: "pending" },
   { id: "V108", applicant: "Mama Put Kitchen", role: "Seller", check: "TIN", detail: "TIN 2345XXXX-0001", note: "", submitted: "4 days ago", status: "info_requested" },
   { id: "V109", applicant: "Casey W.", role: "Support staff", check: "NIN", detail: "NIN *******4821", note: "", submitted: "6 days ago", status: "verified" },
-  { id: "V110", applicant: "Dr. Adaeze O.", role: "Doctor", check: "MDCN licence", detail: "MDCN number on file", note: "Check the register before showing a verified badge", submitted: "3 days ago", status: "pending" },
+  { id: "V110", applicant: "Dr. Adaeze O.", role: "Doctor", check: "MDCN licence", detail: "MDCN number on file", expires: "2026-11-25", note: "Check the register before showing a verified badge", submitted: "3 days ago", status: "pending" },
   { id: "V111", applicant: "Kemi A.", role: "Rider", check: "Payout account name", detail: "GTBank ****2210 -- name check: KEMI ADEBAYO", note: "Matches BVN name", submitted: "5 hours ago", status: "pending" },
   { id: "V112", applicant: "Order MD28420", role: "Customer", check: "Transfer proof", detail: "Bank transfer screenshot", note: "Same image used on another order", submitted: "20 mins ago", status: "pending" },
   { id: "V113", applicant: "LifeCare Store", role: "Seller", check: "CAC / RC number", detail: "RC 1204XXX", note: "", submitted: "3 days ago", status: "verified" },
+  { id: "V114", applicant: "Greenleaf Pharmacy", role: "Seller", check: "PCN licence", detail: "Premises licence", expires: "2026-12-10", note: "", submitted: "10 months ago", hrs: 7000, status: "verified" },
 ];
-const VERIFICATION_PILL = { pending: "prep", info_requested: "route", verified: "done", rejected: "delay" };
-const VERIFICATION_LABEL = { pending: "Pending", info_requested: "More info asked", verified: "Verified", rejected: "Rejected" };
+// Age of a submission in hours -- from the explicit field, or guessed from the "2 days ago" text.
+const verifAgeHours = (v) => v.hrs != null ? v.hrs : /just now/.test(v.submitted) ? 0 : /hour/.test(v.submitted) ? parseInt(v.submitted, 10) : /min/.test(v.submitted) ? 0 : /day/.test(v.submitted) ? parseInt(v.submitted, 10) * 24 : 24;
+// Simple risk score so the riskiest checks are looked at first.
+function verifRisk(v) {
+  let n = 0;
+  if (v.note) n += 3;
+  if (v.check === "Transfer proof") n += 1;
+  if (["NIN", "BVN", "Guarantor"].includes(v.check)) n += 1;
+  if (verifAgeHours(v) > 48 && v.status === "pending") n += 1;
+  return { n, label: n >= 4 ? "High" : n >= 2 ? "Medium" : "Low" };
+}
+const daysUntil = (iso) => Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000);
+const VERIFICATION_PILL = { pending: "prep", second_review: "route", info_requested: "route", verified: "done", rejected: "delay" };
+const VERIFICATION_LABEL = { pending: "Pending", second_review: "Needs 2nd approval", info_requested: "More info asked", verified: "Verified", rejected: "Rejected" };
 function KycVerificationsSection({ sharedOrderStore }) {
   const [seedItems, setItems] = useState(VERIFICATION_SEED);
   const items = [...(sharedOrderStore?.verifications || []), ...seedItems];
   const [checkFilter, setCheckFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("pending");
+  const [statusFilter, setStatusFilter] = useState("open");
   const [query, setQuery] = useState("");
   const [rejecting, setRejecting] = useState(null);
   const [reason, setReason] = useState("Document unclear");
   const [log, setLog] = useState([]);
-  const decide = (it, status, why) => {
-    if (it.shared && sharedOrderStore) sharedOrderStore.updateVerification(it.id, { status });
-    else setItems((a) => a.map((x) => x.id === it.id ? { ...x, status } : x));
-    setLog((l) => [{ id: it.id, text: `${VERIFICATION_LABEL[status]} -- ${it.applicant} (${it.check})${why ? `: ${why}` : ""}`, at: "just now" }, ...l].slice(0, 6));
+  const isOpen = (x) => x.status === "pending" || x.status === "second_review" || x.status === "info_requested";
+  const patch = (it, p) => {
+    if (it.shared && sharedOrderStore) sharedOrderStore.updateVerification(it.id, p);
+    else setItems((a) => a.map((x) => x.id === it.id ? { ...x, ...p } : x));
   };
-  const shown = items.filter((x) => (checkFilter === "all" || x.check === checkFilter) && (statusFilter === "all" || x.status === statusFilter) && (!query || (x.applicant + x.detail).toLowerCase().includes(query.toLowerCase())));
-  const count = (st) => items.filter((x) => x.status === st).length;
+  const note = (text) => setLog((l) => [{ text, at: "just now" }, ...l].slice(0, 8));
+  const decide = (it, status, why) => { patch(it, why ? { status, rejectReason: why } : { status }); note(`${VERIFICATION_LABEL[status]} -- ${it.applicant} (${it.check})${why ? `: ${why}` : ""}`); };
+  // Two-person rule: a flagged item needs a second Super Admin to approve it.
+  const approve = (it) => {
+    if (it.note && it.status !== "second_review") { patch(it, { status: "second_review" }); note(`First approval -- ${it.applicant} (${it.check}). Waiting for a second Super Admin.`); return; }
+    decide(it, "verified");
+  };
+  const rank = (x) => (isOpen(x) ? 0 : 1) * 10 - verifRisk(x).n;
+  const shown = items.filter((x) => (checkFilter === "all" || x.check === checkFilter) && (statusFilter === "all" ? true : statusFilter === "open" ? isOpen(x) : x.status === statusFilter) && (!query || (x.applicant + x.detail).toLowerCase().includes(query.toLowerCase()))).sort((a, b) => rank(a) - rank(b));
+  const open = items.filter(isOpen);
+  const overdue = open.filter((x) => verifAgeHours(x) > 24).length;
+  const expiring = items.filter((x) => x.expires && x.status === "verified" ? daysUntil(x.expires) <= 30 : x.expires && daysUntil(x.expires) <= 30).length;
   return (
     <div className="section-pad">
       <div className="panel enter">
-        <div className="panel-title-row"><div className="panel-title">Verification Queue</div><span className="muted small">{count("pending")} pending -- {items.filter((x) => x.note && x.status === "pending").length} flagged</span></div>
-        <div className="muted small" style={{ marginBottom: 10 }}>Everything that needs a second pair of eyes lands here: NIN, BVN, driver's licences, vehicle papers, guarantors, CAC/TIN/NAFDAC, MDCN and PCN licences, payout account names and suspicious transfer proofs. Admin and Support can see status but cannot decide.</div>
+        <div className="panel-title-row"><div className="panel-title">Verification Queue</div><span className="muted small">{open.length} open -- {overdue} past the 24-hour target -- {expiring} licence{expiring === 1 ? "" : "s"} expiring within 30 days</span></div>
+        <div className="muted small" style={{ marginBottom: 10 }}>Everything that needs a second pair of eyes lands here: NIN, BVN, driver's licences, vehicle papers, guarantors, CAC/TIN/NAFDAC, MDCN and PCN licences, payout account names and suspicious transfer proofs. The riskiest items are listed first. Flagged items need two Super Admins to approve. Admin and Support can see status but cannot decide.</div>
         <PrototypeNote>numbers are masked and nothing is checked against NIMC, banks, CAC or the regulators yet. A real identity provider replaces the manual look-up later.</PrototypeNote>
         <div className="cat-top" style={{ gap: 8, margin: "10px 0", flexWrap: "wrap" }}>
           <input type="text" placeholder="Search applicant or detail" value={query} onChange={(e) => setQuery(e.target.value)} style={{ minWidth: 180 }} />
@@ -1159,32 +1185,39 @@ function KycVerificationsSection({ sharedOrderStore }) {
             <option value="all">All checks</option>{VERIFICATION_CHECKS.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
           <select className="sort-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-            <option value="all">All statuses</option>{Object.keys(VERIFICATION_LABEL).map((k) => <option key={k} value={k}>{VERIFICATION_LABEL[k]}</option>)}
+            <option value="open">Open only</option><option value="all">All statuses</option>{Object.keys(VERIFICATION_LABEL).map((k) => <option key={k} value={k}>{VERIFICATION_LABEL[k]}</option>)}
           </select>
         </div>
         <table className="admin-table">
-          <thead><tr><th>Applicant</th><th>Role</th><th>Check</th><th>Detail</th><th>Submitted</th><th>Status</th><th /></tr></thead>
+          <thead><tr><th>Applicant</th><th>Role</th><th>Check</th><th>Detail</th><th>Risk</th><th>Waiting</th><th>Expires</th><th>Status</th><th /></tr></thead>
           <tbody>
-            {shown.map((a) => (
-              <tr key={a.id}>
-                <td className="card-name">{a.applicant}</td><td>{a.role}</td><td>{a.check}</td>
-                <td className="muted small">{a.detail}{a.note && <div style={{ color: "#EA580C" }}><AlertTriangle size={11} style={{ verticalAlign: "middle" }} /> {a.note}</div>}</td>
-                <td className="muted small">{a.submitted}</td>
-                <td><span className={`status-pill ${VERIFICATION_PILL[a.status]}`}>{VERIFICATION_LABEL[a.status]}</span></td>
-                <td style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {(a.status === "pending" || a.status === "info_requested") ? (
-                    <>
-                      <button className="ghost-btn-sm" onClick={() => decide(a, "verified")}>Approve</button>
-                      <button className="ghost-btn-sm" onClick={() => confirmAction({ title: "Ask for more information?", message: `${a.applicant} will be asked to resubmit or explain: ${a.check}.`, confirmLabel: "Ask" }, () => decide(a, "info_requested"))}>Ask for info</button>
-                      <button className="ghost-btn-sm deny" onClick={() => { setReason("Document unclear"); setRejecting(a); }}>Reject</button>
-                    </>
-                  ) : (
-                    <button className="ghost-btn-sm" onClick={() => decide(a, "pending")}>Reopen</button>
-                  )}
-                </td>
-              </tr>
-            ))}
-            {shown.length === 0 && <tr><td colSpan={7} className="muted small">Nothing matches these filters.</td></tr>}
+            {shown.map((a) => {
+              const risk = verifRisk(a); const age = verifAgeHours(a); const left = a.expires ? daysUntil(a.expires) : null;
+              return (
+                <tr key={a.id}>
+                  <td className="card-name">{a.applicant}</td><td>{a.role}</td><td>{a.check}</td>
+                  <td className="muted small">{a.detail}{a.note && <div style={{ color: "#EA580C" }}><AlertTriangle size={11} style={{ verticalAlign: "middle" }} /> {a.note}</div>}</td>
+                  <td><span className={`status-pill ${risk.label === "High" ? "delay" : risk.label === "Medium" ? "prep" : "done"}`}>{risk.label}</span></td>
+                  <td className="muted small" style={isOpen(a) && age > 24 ? { color: "#DC2626", fontWeight: 600 } : undefined}>{isOpen(a) ? (age > 24 ? `${Math.floor(age / 24)}d (overdue)` : `${age}h`) : "--"}</td>
+                  <td className="muted small" style={left != null && left <= 30 ? { color: "#DC2626", fontWeight: 600 } : undefined}>{a.expires ? (left <= 0 ? "Expired" : left <= 30 ? `${left} days left` : a.expires) : "--"}</td>
+                  <td><span className={`status-pill ${VERIFICATION_PILL[a.status]}`}>{VERIFICATION_LABEL[a.status]}</span></td>
+                  <td style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {isOpen(a) ? (
+                      <>
+                        <button className="ghost-btn-sm" onClick={() => a.status === "second_review" ? confirmAction({ title: "Approve as second reviewer?", message: "This must be a different Super Admin from the first approver.", confirmLabel: "Approve" }, () => approve(a)) : approve(a)}>{a.status === "second_review" ? "Approve (2nd)" : a.note ? "Approve (1st)" : "Approve"}</button>
+                        <button className="ghost-btn-sm" onClick={() => confirmAction({ title: "Ask for more information?", message: `${a.applicant} will be asked to resubmit or explain: ${a.check}.`, confirmLabel: "Ask" }, () => decide(a, "info_requested"))}>Ask for info</button>
+                        <button className="ghost-btn-sm deny" onClick={() => { setReason("Document unclear"); setRejecting(a); }}>Reject</button>
+                      </>
+                    ) : a.status === "verified" && left != null && left <= 30 ? (
+                      <button className="ghost-btn-sm" onClick={() => { patch(a, { status: "pending", note: "Licence expiring -- re-verify" }); note(`Re-verification requested -- ${a.applicant} (${a.check})`); }}>Re-verify</button>
+                    ) : (
+                      <button className="ghost-btn-sm" onClick={() => decide(a, "pending")}>Reopen</button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+            {shown.length === 0 && <tr><td colSpan={9} className="muted small">Nothing matches these filters.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -3311,6 +3344,133 @@ function RegulatorySection() {
   );
 }
 
+function downloadCsv(name, rows) {
+  const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const blob = new Blob([rows.map((r) => r.map(esc).join(",")).join("\n")], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = url; a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+const RECON_DAYS = [
+  { day: "Today", orders: 184, received: 1240500, cod: 322000, payoutsDue: 905000, refunds: 38000 },
+  { day: "Yesterday", orders: 421, received: 3015900, cod: 710400, payoutsDue: 2210500, refunds: 91500 },
+  { day: "2 days ago", orders: 398, received: 2840200, cod: 655000, payoutsDue: 2064800, refunds: 120000 },
+];
+function ReconciliationSection() {
+  const [rows, setRows] = useState(RECON_DAYS.map((d) => ({ ...d, bankDeposits: d.day === "Today" ? 1240500 : d.day === "Yesterday" ? 3015900 : 2790200, codPaidIn: d.day === "Today" ? 180000 : d.day === "Yesterday" ? 710400 : 655000, signedOff: d.day === "2 days ago" ? false : false })));
+  const signOff = (day) => setRows((r) => r.map((x) => x.day === day ? { ...x, signedOff: true } : x));
+  return (
+    <div className="section-pad">
+      <div className="panel enter">
+        <div className="panel-title">Daily reconciliation</div>
+        <div className="muted small" style={{ marginBottom: 10 }}>Each day: money received for orders against money that reached the bank, and cash from riders against cash they paid in. Any gap is flagged for you to look into before you sign the day off.</div>
+        <PrototypeNote>figures are sample data. Real numbers arrive once payments and the bank feed are connected.</PrototypeNote>
+        <table className="admin-table">
+          <thead><tr><th>Day</th><th>Orders</th><th>Payments received</th><th>Bank deposits</th><th>Gap</th><th>Rider cash due</th><th>Cash paid in</th><th>Cash gap</th><th>Payouts due</th><th>Refunds</th><th /></tr></thead>
+          <tbody>
+            {rows.map((d) => {
+              const gap = d.received - d.bankDeposits; const cashGap = d.cod - d.codPaidIn;
+              return (
+                <tr key={d.day}>
+                  <td className="card-name">{d.day}</td><td>{d.orders}</td><td className="mono">{money(d.received)}</td><td className="mono">{money(d.bankDeposits)}</td>
+                  <td className="mono" style={gap ? { color: "#DC2626", fontWeight: 700 } : undefined}>{gap ? money(gap) : "None"}</td>
+                  <td className="mono">{money(d.cod)}</td><td className="mono">{money(d.codPaidIn)}</td>
+                  <td className="mono" style={cashGap ? { color: "#DC2626", fontWeight: 700 } : undefined}>{cashGap ? money(cashGap) : "None"}</td>
+                  <td className="mono">{money(d.payoutsDue)}</td><td className="mono">{money(d.refunds)}</td>
+                  <td>{d.signedOff ? <span className="status-pill done">Signed off</span> : <button className="ghost-btn-sm" onClick={() => confirmAction({ title: gap || cashGap ? "Sign off with a gap?" : "Sign off this day?", message: gap || cashGap ? "There is an unexplained gap. Sign off only if you have looked into it." : "This marks the day as checked.", confirmLabel: "Sign off" }, () => signOff(d.day))}>Sign off</button>}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+const CITY_ROLLOUT_SEED = {
+  Lagos: { phase: "Customers open", cap: 0, capOn: false },
+  Abuja: { phase: "Riders open", cap: 50, capOn: true },
+  Kano: { phase: "Sellers only", cap: 50, capOn: true },
+  "Port Harcourt": { phase: "Not open", cap: 50, capOn: true },
+};
+const ROLLOUT_PHASES = ["Not open", "Sellers only", "Riders open", "Customers open"];
+function LaunchSection() {
+  const [cities, setCities] = useState(CITY_ROLLOUT_SEED);
+  const [done, setDone] = useState(new Set(["R1"]));
+  const set = (c, p) => setCities((all) => ({ ...all, [c]: { ...all[c], ...p } }));
+  const open = REGULATORY_SEED.filter((r) => !done.has(r.id));
+  return (
+    <div className="section-pad">
+      <div className="panel enter">
+        <div className="panel-title">Launch checklist</div>
+        <div className="muted small" style={{ marginBottom: 10 }}>Go or no-go. A city should only move to "Customers open" when every item below is in place.</div>
+        <div className="list-col">
+          {REGULATORY_SEED.map((r) => (
+            <label key={r.id} className="subscribe-toggle-label" style={{ fontSize: 13, color: "var(--ink)" }}>
+              <input type="checkbox" checked={done.has(r.id)} onChange={() => setDone((d) => { const n = new Set(d); n.has(r.id) ? n.delete(r.id) : n.add(r.id); return n; })} /> {r.item} <span className="muted small">-- {r.owner}</span>
+            </label>
+          ))}
+        </div>
+        <div style={{ marginTop: 10 }}><span className={`status-pill ${open.length === 0 ? "done" : "delay"}`}>{open.length === 0 ? "GO -- everything is in place" : `NO-GO -- ${open.length} item${open.length === 1 ? "" : "s"} still open`}</span></div>
+      </div>
+      <div className="panel enter">
+        <div className="panel-title">City rollout and pilot cap</div>
+        <div className="muted small" style={{ marginBottom: 10 }}>Open a city in steps: sellers first, then riders, then customers. The pilot cap limits new orders per day so early problems stay small.</div>
+        <table className="admin-table">
+          <thead><tr><th>City</th><th>Phase</th><th>Pilot cap</th><th>Orders per day</th></tr></thead>
+          <tbody>
+            {Object.entries(cities).map(([c, v]) => (
+              <tr key={c}>
+                <td className="card-name">{c}</td>
+                <td><select className="sort-select" value={v.phase} onChange={(e) => {
+                  const ph = e.target.value;
+                  if (ph === "Customers open" && open.length > 0) { confirmAction({ title: "Open to customers with items still open?", message: `${open.length} launch item(s) are not in place yet.`, confirmLabel: "Open anyway" }, () => set(c, { phase: ph })); } else set(c, { phase: ph });
+                }}>{ROLLOUT_PHASES.map((p) => <option key={p}>{p}</option>)}</select></td>
+                <td><button className={`toggle-mini ${v.capOn ? "on" : ""}`} onClick={() => set(c, { capOn: !v.capOn })}><span /></button></td>
+                <td><input type="number" min="1" disabled={!v.capOn} value={v.cap || ""} onChange={(e) => set(c, { cap: Number(e.target.value) || 0 })} style={{ width: 90 }} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+const DIGEST_REFUNDS = [
+  { reason: "Wrong item", count: 14, amount: 61200, worst: "Fresh Fields Grocery (6)" },
+  { reason: "Late delivery", count: 11, amount: 38400, worst: "Rider: Devon K. (4)" },
+  { reason: "Item missing", count: 7, amount: 29900, worst: "SuperMart Grocery (3)" },
+  { reason: "Damaged in transit", count: 5, amount: 44800, worst: "Rider: Sam O. (3)" },
+];
+function WeeklyDigestSection({ sharedOrderStore }) {
+  const queueOpen = (sharedOrderStore?.verifications || []).filter((v) => v.status !== "verified" && v.status !== "rejected").length + VERIFICATION_SEED.filter((v) => v.status === "pending" || v.status === "info_requested").length;
+  const stats = [["Late orders", 37, "up 6 on last week"], ["Rider no-shows", 5, "down 2"], ["Checks rejected", 9, "same"], ["Checks waiting", queueOpen, "needs you"], ["Refunds", DIGEST_REFUNDS.reduce((a, b) => a + b.count, 0), "up 4"]];
+  return (
+    <div className="section-pad">
+      <div className="panel enter">
+        <div className="panel-title-row"><div className="panel-title">Weekly "what went wrong"</div>
+          <button className="ghost-btn-sm" onClick={() => downloadCsv("medra-audit-trail.csv", [["Time", "Who", "Action"], ["2026-11-02 09:14", "Super Admin", "Approved NIN for Casey W."], ["2026-11-02 09:20", "Super Admin", "Rejected licence for Devon K."], ["2026-11-02 10:02", "Super Admin", "Marked CAC item as in place"], ...DIGEST_REFUNDS.map((d) => ["Week", "Refunds", `${d.reason}: ${d.count} (${d.amount})`])])}><FileDown size={13} style={{ verticalAlign: "middle" }} /> Export audit trail (CSV)</button>
+        </div>
+        <div className="muted small" style={{ marginBottom: 12 }}>One page for Monday morning: what went wrong last week, and who is behind it. Sample figures until real orders flow through.</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
+          {stats.map(([l, v, d]) => <div key={l} className="panel" style={{ margin: 0 }}><div className="muted small">{l}</div><div className="card-name" style={{ fontSize: 22 }}>{v}</div><div className="muted small">{d}</div></div>)}
+        </div>
+      </div>
+      <div className="panel enter">
+        <div className="panel-title">Refunds by reason</div>
+        <div className="muted small" style={{ marginBottom: 10 }}>Shows which sellers or riders keep showing up, so you can talk to them before it turns into a pattern.</div>
+        <table className="admin-table">
+          <thead><tr><th>Reason</th><th>Refunds</th><th>Value</th><th>Most often linked to</th></tr></thead>
+          <tbody>{DIGEST_REFUNDS.map((d) => <tr key={d.reason}><td className="card-name">{d.reason}</td><td>{d.count}</td><td className="mono">{money(d.amount)}</td><td className="muted small">{d.worst}</td></tr>)}</tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function PaymentMethodsSection() {
   const [methods, setMethods] = useState({ "Card payments": true, "Wallet payments": true, "Cash on delivery": true });
   const toggle = (key) => setMethods((m) => ({ ...m, [key]: !m[key] }));
@@ -4274,6 +4434,9 @@ const SECTION_MAP = {
   membership: MembershipPlansSection,
   kyc: KycVerificationsSection,
   regulatory: RegulatorySection,
+  launch: LaunchSection,
+  recon: ReconciliationSection,
+  digest: WeeklyDigestSection,
   "system-settings": SystemSettingsSection,
   "data-retention": DataRetentionSection,
   categories: CategoriesSection,

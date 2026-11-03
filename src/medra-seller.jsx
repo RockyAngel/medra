@@ -768,6 +768,7 @@ function AddProductModal({ onAdd, onClose }) {
   const [category, setCategory] = useState("Drinks");
   const canSave = name.trim() && price > 0;
   const margin = cost > 0 ? Math.round(((price - cost) / price) * 100) : null;
+  const customerSees = Math.round(price * 1.1);
   const lowMargin = cost > 0 && price <= cost;
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -780,6 +781,9 @@ function AddProductModal({ onAdd, onClose }) {
           <div className="field" style={{ flex: 1 }}><span>Your cost (\u20a6, optional)</span><input type="number" value={cost} onChange={(e) => setCost(Number(e.target.value))} min={0} /></div>
         </div>
         <div className="field" style={{ marginBottom: 10 }}><span>Category</span><input type="text" value={category} onChange={(e) => setCategory(e.target.value)} /></div>
+        <div className="muted small" style={{ marginBottom: 10, background: "#F5F3FF", borderRadius: 10, padding: "8px 10px" }}>
+          <b>You receive:</b> ₦{Number(price || 0).toLocaleString()} per sale. <b>The customer sees:</b> ₦{customerSees.toLocaleString()} (your price plus Medra's 10%).
+        </div>
         {cost > 0 && (
           <div className="muted small" style={{ marginBottom: 12, color: lowMargin ? "#DC2626" : "var(--muted)" }}>
             {lowMargin ? <><AlertCircle size={12} style={{ verticalAlign: "middle" }} /> This price is at or below your cost -- you'd lose money on every sale.</> : `Margin at this price: ${margin}%`}
@@ -1397,8 +1401,25 @@ function PayoutsScreen({ extraPayouts, requestPayout, available = 125600, telehe
   const [requestOpen, setRequestOpen] = useState(false);
   const [expanded, setExpanded] = useState(null);
   const allPayouts = [...extraPayouts, ...PAYOUTS];
+  const waiting = allPayouts.filter((p) => p.status !== "paid").reduce((a, p) => a + p.amount, 0);
+  const released = allPayouts.filter((p) => p.status === "paid").reduce((a, p) => a + p.amount, 0);
+  const downloadStatement = () => {
+    const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const rows = [["Date", "Orders", "Amount (NGN)", "Status"], ...allPayouts.map((p) => [p.date, p.orders.length, p.amount, p.status === "paid" ? "Paid" : "Awaiting review"])];
+    const url = URL.createObjectURL(new Blob([rows.map((x) => x.map(esc).join(",")).join("\n")], { type: "text/csv" }));
+    const a = document.createElement("a"); a.href = url; a.download = "medra-seller-statement.csv"; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
   return (
     <div className="section-pad">
+      <div className="panel enter">
+        <div className="panel-title-row"><div className="panel-title">Your money at a glance</div><button className="ghost-btn-sm" onClick={downloadStatement}>Download statement (CSV)</button></div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
+          <div><div className="muted small">Available to withdraw</div><div className="card-name" style={{ fontSize: 20 }}>{money(available)}</div></div>
+          <div><div className="muted small">Waiting for review</div><div className="card-name" style={{ fontSize: 20 }}>{money(waiting)}</div></div>
+          <div><div className="muted small">Already paid out</div><div className="card-name" style={{ fontSize: 20 }}>{money(released)}</div></div>
+        </div>
+        <div className="muted small" style={{ marginTop: 10 }}>Trust level: <b>Verified</b>. New sellers wait about 3 days for payouts, verified sellers 1-2 business days, and trusted sellers (6 months, few refunds) get next-day payouts.</div>
+      </div>
       {requestOpen && <SellerWithdrawModal available={available} onClose={() => setRequestOpen(false)} onSubmit={requestPayout} />}
       <div className="panel enter">
         <div className="panel-title-row"><div className="panel-title">Payouts</div><button className="primary-btn-sm" onClick={() => setRequestOpen(true)}>Request Payout</button></div>
@@ -2372,7 +2393,7 @@ function SellerBankAccountModal({ current, onClose, onSave }) {
         </div>
         <div className="field" style={{ marginBottom: 10 }}><span>Account number</span><input type="text" inputMode="numeric" maxLength={10} value={accountNumber} onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ""))} placeholder="10-digit account number" /></div>
         <div className="field" style={{ marginBottom: 16 }}><span>Account holder name</span><input type="text" value={accountName} onChange={(e) => setAccountName(e.target.value)} placeholder="Must match your bank account" /></div>
-        {accountNumber.length === 10 && accountName.trim() && <div className="muted small" style={{ marginBottom: 12 }}>Name check: Super Admin confirms this name matches your BVN before your first payout. Payouts stay on hold until then.</div>}
+        {accountNumber.length === 10 && accountName.trim() && <div className="muted small" style={{ marginBottom: 12 }}>Name check: Admin confirms this name matches your BVN before your first payout. Payouts stay on hold until then.</div>}
         <button className="primary-btn-sm wide" disabled={!valid} onClick={() => { onSave({ bank, last4: accountNumber.slice(-4), accountName }); onClose(); }}>Save payout account</button>
       </div>
     </div>
@@ -2639,7 +2660,7 @@ function SellerDocFields({ docs, setDocs }) {
       <label className="field"><span>CAC (RC) number{docs.kind === "registered" ? "" : " -- optional"}</span><input type="text" value={docs.cac} onChange={up("cac")} placeholder="RC 1234567" required={docs.kind === "registered"} /></label>
       <label className="field"><span>TIN (tax number) -- optional</span><input type="text" value={docs.tin} onChange={up("tin")} /></label>
       <label className="field"><span>NAFDAC number -- needed for packaged food, drinks and cosmetics; pharmacies also give their PCN premises licence</span><input type="text" value={docs.nafdac} onChange={up("nafdac")} /></label>
-      <div className="muted small">Super Admin double-checks your NIN, BVN and documents before your store goes live.</div>
+      <div className="muted small">Admin double-checks your NIN, BVN and documents before your store goes live.</div>
     </>
   );
 }
