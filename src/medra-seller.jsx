@@ -1,12 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
-  Bell, MessageCircle, ChevronDown, Store, ClipboardList, Package,
-  BarChart3, Wallet, CreditCard, Users, Star, Megaphone, Tag, Newspaper, CircleCheck, XCircle, BadgeCheck,
-  Settings, User as UserIcon, ExternalLink, LifeBuoy, LogOut,
-  LayoutDashboard, ArrowUp, Check, X, Plus, Minus, Pencil, ChevronRight,
-  ShieldCheck, TrendingUp, Truck as TruckIcon, Clock, AlertCircle, AlertTriangle, Upload, Send, Copy, FileDown, UserPlus, RotateCcw, MapPin, Inbox, Image as ImageIcon, Sparkles,
-  ArrowRight, Play, Heart, ShoppingCart, Headphones, ShoppingBag, Cross, Shirt, Smartphone, Home as HomeIcon, Utensils, Gift, Menu, Compass,
-} from "lucide-react";
+import { Bell, MessageCircle, ChevronDown, Store, ClipboardList, Package, BarChart3, Wallet, CreditCard, Users, Star, Megaphone, Tag, Newspaper, CircleCheck, XCircle, BadgeCheck, Settings, User as UserIcon, ExternalLink, LifeBuoy, LogOut, LayoutDashboard, ArrowUp, Check, X, Plus, Minus, Pencil, ChevronRight, ShieldCheck, TrendingUp, Truck as TruckIcon, Clock, AlertCircle, AlertTriangle, Upload, Send, Copy, FileDown, UserPlus, RotateCcw, MapPin, Inbox, Image as ImageIcon, Sparkles, ArrowRight, Play, Heart, ShoppingCart, Headphones, Cross, Menu, Compass } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 
 const money = (n) => `₦${Math.round(n).toLocaleString("en-NG")}`;
@@ -206,7 +199,7 @@ function SizeBadge({ sizeKey, weightKg }) {
 
 // Canonical order statuses -- one vocabulary across every app. Legacy/alias
 // labels are normalised so StatusPill always shows one of these five.
-const ORDER_STATUSES = ["Placed", "Preparing", "Out for Delivery", "Delivered", "Cancelled"];
+
 const ORDER_STATUS_ALIASES = { placed: "Placed", "order placed": "Placed", pending: "Placed", confirmed: "Placed", processing: "Preparing", preparing: "Preparing", scheduled: "Placed", onway: "Out for Delivery", "en route": "Out for Delivery", "out for delivery": "Out for Delivery", delivered: "Delivered", "delivered (simulated)": "Delivered", completed: "Delivered", cancelled: "Cancelled", canceled: "Cancelled" };
 const normalizeOrderStatus = (s) => ORDER_STATUS_ALIASES[String(s || "").toLowerCase()] || s;
 function StatusPill({ status }) {
@@ -553,7 +546,7 @@ const SELLER_DISPUTES = [
   { id: "D-219", order: "O5522", customer: "Devon K.", amount: 2710, reason: "Order missing an item", filedBy: "Customer" },
 ];
 
-const RETURN_REASONS = ["Wrong item received", "Item damaged", "No longer needed", "Item not as described"];
+
 const SELLER_RETURNS = [
   { id: "RT-118", order: "MD28469", customer: "Sarah Ahmed", item: "Cough Syrup 100ml", reason: "Item damaged", status: "requested" },
   { id: "RT-112", order: "MD28390", customer: "Kelechi O.", item: "Multivitamin Tablets", reason: "Wrong item sent", status: "approved" },
@@ -854,7 +847,7 @@ function ProductsScreen({ inventory, onDuplicate, onDelete, onAddProduct, onUpda
         const name = row[nameIdx]?.trim();
         const price = parseFloat((row[priceIdx] || "").replace(/[^\d.]/g, ""));
         if (!name || !price || existingNames.has(name.toLowerCase())) return;
-        onAddProduct({ id: `p-${Date.now()}-${added}`, name, price, stock: stockIdx > -1 ? parseInt(row[stockIdx]) || 0 : 0, category: catIdx > -1 ? row[catIdx] || "Uncategorized" : "Uncategorized", lowStockAt: 5 });
+        onAddProduct({ id: `p-${Date.now()}-${added}`, name, price, stock: stockIdx > -1 ? Math.max(0, parseInt(row[stockIdx]) || 0) : 0, category: catIdx > -1 ? row[catIdx] || "Uncategorized" : "Uncategorized", lowStockAt: 5 });
         existingNames.add(name.toLowerCase());
         added++;
       });
@@ -2457,16 +2450,7 @@ function AccountSettingsScreen() {
   );
 }
 
-function SimpleInfoScreen({ title, rows }) {
-  return (
-    <div className="section-pad">
-      <div className="panel enter">
-        <div className="panel-title">{title}</div>
-        <div className="list-col">{rows.map(([a, b]) => <div key={a} className="flag-row"><div className="ti-mid"><div className="card-name">{a}</div><div className="muted">{b}</div></div></div>)}</div>
-      </div>
-    </div>
-  );
-}
+
 
 /* ============================================================
    APP SHELL

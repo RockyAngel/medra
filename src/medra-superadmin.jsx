@@ -1,16 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
-  ShieldCheck, Bell, MessageCircle, ChevronDown, Search, Calendar,
-  Users, UserCog, Lock, Store, Truck, User as UserIcon, Package,
-  LayoutGrid, ClipboardList, BadgeCheck, Navigation, FileText,
-  CreditCard, BarChart3, Wallet, ArrowLeftRight, PlusCircle, Percent,
-  Settings2, AlertTriangle, ScrollText, LifeBuoy, Mail, ShieldAlert,
-  Flag, Tag, Gift, Crown, Megaphone, FileBarChart, TrendingUp,
-  Settings, SlidersHorizontal, ToggleLeft, Activity, FileSearch,
-  GitBranch, Terminal, LayoutDashboard, LogOut, ArrowUp, ArrowDown,
-  Check, X, Star, Server, Database, HardDrive, Zap, Clock as ClockIcon, Award,
-  Users2, ChevronRight, Circle, FileDown, Eye, Send, Sparkles, Monitor, Smartphone, History, Rss, Inbox, Pencil, HelpCircle, Image as ImageIcon, PartyPopper, Target, Medal, Heart, Menu, CircleCheck, Compass, Cross, MapPin, Wrench, Globe,
-} from "lucide-react";
+import { ShieldCheck, Bell, MessageCircle, ChevronDown, Search, Calendar, Users, UserCog, Lock, Store, Truck, User as UserIcon, Package, LayoutGrid, ClipboardList, BadgeCheck, Navigation, FileText, CreditCard, Wallet, ArrowLeftRight, PlusCircle, Percent, Settings2, AlertTriangle, ScrollText, LifeBuoy, Mail, ShieldAlert, Flag, Tag, Gift, Crown, Megaphone, FileBarChart, TrendingUp, Settings, SlidersHorizontal, ToggleLeft, Activity, FileSearch, LayoutDashboard, LogOut, ArrowUp, ArrowDown, Check, X, Star, Server, Database, HardDrive, Zap, Clock as ClockIcon, Award, Users2, ChevronRight, FileDown, Eye, Send, Sparkles, Monitor, Smartphone, History, Rss, Inbox, Pencil, HelpCircle, Image as ImageIcon, PartyPopper, Target, Medal, Heart, Menu, CircleCheck, RefreshCw, Compass, Cross, MapPin, Wrench, Globe } from "lucide-react";
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
   BarChart, Bar, PieChart, Pie, Cell,
@@ -2856,7 +2845,12 @@ const MOCK_FREE_VISIT_REQUESTS = [
   { id: "TV-1002", staffName: "Femi O. (Admin, Ops)", activeSince: "2025-03-14", visitsUsedThisYear: 1, reason: "Follow-up", status: "pending" },
 ];
 function generateVoucherCode() {
-  return `MEDRA-FREE-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+  let code;
+  try { const a = new Uint8Array(6); crypto.getRandomValues(a); code = Array.from(a, (x) => (x % 36).toString(36)).join("").toUpperCase(); }
+  catch (e) { code = Math.random().toString(36).slice(2, 8).toUpperCase(); }
+  code = `MEDRA-FREE-${code}`;
+  if (typeof window !== "undefined") { window.__medraVouchers = window.__medraVouchers || new Set(); window.__medraVouchers.add(code); }
+  return code;
 }
 function FreeVisitApprovalsSection() {
   const [requests, setRequests] = useState(MOCK_FREE_VISIT_REQUESTS);

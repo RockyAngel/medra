@@ -1,15 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
-  Bell, MessageCircle, ChevronDown, Calendar, Users, Store, Truck, Sparkles,
-  User as UserIcon, Package, LayoutGrid, ClipboardList, BadgeCheck,
-  Navigation, CreditCard, Wallet, ArrowLeftRight, PlusCircle, Percent,
-  AlertTriangle, ScrollText, LifeBuoy, Mail, ShieldAlert, Tag, Gift,
-  Crown, Megaphone, FileBarChart, TrendingUp, Settings, LayoutDashboard,
-  LogOut, ArrowUp, Check, X, Star, ChevronRight, ShoppingBag, UserPlus,
-  ShieldCheck, Server, Database, Cpu, HardDrive, Users2, FileText, Flag,
-  Search, FileDown, Eye, Send, Lock, Monitor, Smartphone, History, Clock, PenLine, Inbox, Image as ImageIcon, CheckCircle2, Pencil,
-  ArrowRight, Play, Heart, ShoppingCart, Headphones, BarChart3, RefreshCw, MapPin, Circle, CircleCheck, Menu, Compass, Cross, Upload, Info,
-} from "lucide-react";
+import { Bell, MessageCircle, ChevronDown, Calendar, Users, Store, Truck, Sparkles, User as UserIcon, Package, ClipboardList, BadgeCheck, Navigation, CreditCard, Wallet, AlertTriangle, LifeBuoy, Mail, ShieldAlert, TrendingUp, LayoutDashboard, LogOut, ArrowUp, Check, X, ChevronRight, ShoppingBag, UserPlus, ShieldCheck, Server, Database, Cpu, HardDrive, Users2, FileText, Search, FileDown, Eye, Send, Lock, Monitor, Smartphone, History, Clock, PenLine, Inbox, Image as ImageIcon, CheckCircle2, Pencil, Headphones, BarChart3, RefreshCw, Circle, CircleCheck, Menu, Compass, Cross, Upload, Info } from "lucide-react";
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
   PieChart, Pie, Cell,
@@ -586,13 +576,12 @@ function UsersSection({ logView, viewAsLog, onViewAs, suspensions, onSuspend, on
         return;
       }
       let added = 0;
-      let malformed = 0;
       const existingEmails = new Set(users.map((u) => u.email.toLowerCase()));
       const newUsers = [];
       const skipped = [];
       rows.slice(1).forEach((row, i) => {
         if (row.length === 1 && row[0].trim() === "") return;
-        if (row.length !== header.length) { malformed++; skipped.push(`Row ${i + 2}: column count didn't match the header -- check for an unquoted comma in a field`); return; }
+        if (row.length !== header.length) { skipped.push(`Row ${i + 2}: column count didn't match the header -- check for an unquoted comma in a field`); return; }
         const name = row[nameIdx]?.trim();
         const email = row[emailIdx]?.trim();
         if (!name || !email) { skipped.push(`Row ${i + 2}: missing name or email`); return; }
@@ -706,13 +695,12 @@ function RidersSection({ suspensions, onSuspend, onUnsuspend, logView }) {
         return;
       }
       let added = 0;
-      let malformed = 0;
       const existingNames = new Set(riders.map((r) => r.name.toLowerCase()));
       const newRiders = [];
       const skipped = [];
       rows.slice(1).forEach((row, i) => {
         if (row.length === 1 && row[0].trim() === "") return;
-        if (row.length !== header.length) { malformed++; skipped.push(`Row ${i + 2}: column count didn't match the header -- check for an unquoted comma in a field`); return; }
+        if (row.length !== header.length) { skipped.push(`Row ${i + 2}: column count didn't match the header -- check for an unquoted comma in a field`); return; }
         const name = row[nameIdx]?.trim();
         if (!name) { skipped.push(`Row ${i + 2}: missing name`); return; }
         if (existingNames.has(name.toLowerCase())) { skipped.push(`Row ${i + 2} (${name}): already exists`); return; }
@@ -1477,11 +1465,7 @@ function AdminSellerDetailModal({ seller, onClose, suspension, onSuspend, onUnsu
   );
 }
 
-const KYC_APPLICATIONS_SEED = [
-  { id: "KYC1", applicant: "Bright Pharmacy", type: "Seller", document: "Business license", submitted: "2 days ago", status: "pending" },
-  { id: "KYC2", applicant: "LifeCare Store", type: "Seller", document: "Business license", submitted: "3 days ago", status: "verified" },
-  { id: "KYC3", applicant: "Devon K.", type: "Rider", document: "Driver's license", submitted: "1 day ago", status: "pending" },
-];
+
 const FRAUD_FLAGS_SEED = [
   { id: "FR1", account: "Devon King", type: "Order velocity", detail: "6 orders placed within 20 minutes -- unusual for this account's history", severity: "high", status: "open" },
   { id: "FR2", account: "New signup -- kelechi88@example.com", type: "New account, high spend", detail: "\u20a685,000 spent within 2 hours of account creation", severity: "high", status: "open" },
@@ -1660,7 +1644,7 @@ function FinancialTransactionsSection({ initialTab }) {
   );
 }
 
-const VERIFICATION_CHECKS = ["NIN", "BVN", "Driver's licence", "Vehicle papers", "Guarantor", "CAC / RC number", "TIN", "NAFDAC", "MDCN licence", "PCN licence", "Payout account name", "Transfer proof"];
+
 const VERIFICATION_SEED = [
   { id: "V101", applicant: "Devon K.", role: "Rider", check: "NIN", detail: "NIN *******4821", note: "", submitted: "1 day ago", status: "pending" },
   { id: "V102", applicant: "Devon K.", role: "Rider", check: "BVN", detail: "BVN *******7390", note: "Name on BVN differs from NIN (middle name)", submitted: "1 day ago", status: "pending" },
@@ -1728,13 +1712,12 @@ function VendorAppsSection({ suspensions, onSuspend, onUnsuspend, logView }) {
         return;
       }
       let added = 0;
-      let malformed = 0;
       const existingNames = new Set(activeSellers.map((s) => s.name.toLowerCase()));
       const newSellers = [];
       const skipped = [];
       rows.slice(1).forEach((row, i) => {
         if (row.length === 1 && row[0].trim() === "") return;
-        if (row.length !== header.length) { malformed++; skipped.push(`Row ${i + 2}: column count didn't match the header -- check for an unquoted comma in a field`); return; }
+        if (row.length !== header.length) { skipped.push(`Row ${i + 2}: column count didn't match the header -- check for an unquoted comma in a field`); return; }
         const name = row[nameIdx]?.trim();
         if (!name) { skipped.push(`Row ${i + 2}: missing name`); return; }
         if (existingNames.has(name.toLowerCase())) { skipped.push(`Row ${i + 2} (${name}): already exists`); return; }
@@ -1960,130 +1943,15 @@ function exportCsv(filename, rows) {
   URL.revokeObjectURL(url);
 }
 
-function AnnouncementsSection() {
-  const [items, setItems] = useState([
-    { title: "System Maintenance", body: "Scheduled May 20, 2:00-4:00 AM" },
-    { title: "New Feature Released", body: "Advanced Analytics now available" },
-  ]);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const post = () => {
-    if (!title.trim()) return;
-    setItems((it) => [{ title, body }, ...it]);
-    setTitle(""); setBody(""); setModalOpen(false);
-  };
-  return (
-    <div className="section-pad">
-      {modalOpen && (
-        <div className="modal-backdrop" onClick={() => setModalOpen(false)}>
-          <div className="confirm-modal enter" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setModalOpen(false)}><X size={16} /></button>
-            <div className="card-name" style={{ fontSize: 16, marginBottom: 12 }}>New announcement</div>
-            <div className="field" style={{ marginBottom: 10 }}><span>Title</span><input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Scheduled maintenance" /></div>
-            <div className="field" style={{ marginBottom: 16 }}><span>Details</span><input type="text" value={body} onChange={(e) => setBody(e.target.value)} placeholder="What should people know?" /></div>
-            <button className="primary-btn-sm wide" onClick={post}>Post announcement</button>
-          </div>
-        </div>
-      )}
-      <div className="panel enter">
-        <div className="panel-title-row"><div className="panel-title">Announcements</div><button className="primary-btn-sm" onClick={() => setModalOpen(true)}>+ New Announcement</button></div>
-        <div className="list-col">
-          {items.map((a, i) => <div key={i} className="pending-row"><div className="ti-mid"><div className="card-name">{a.title}</div><div className="muted">{a.body}</div></div></div>)}
-        </div>
-      </div>
-    </div>
-  );
-}
 
-const BROADCAST_SEGMENTS = ["All Customers", "All Sellers", "All Riders", "Sellers -- Groceries", "Sellers -- Pharmacy", "Riders -- Lagos zone"];
 
-const AUTOMATED_BROADCASTS = [
-  { key: "welcome", label: "Welcome message", trigger: "New account created", template: "Welcome to Medra! Here's 50 points to get you started.", enabled: true },
-  { key: "milestone", label: "Milestone alert", trigger: "Order count milestones (10th, 50th, 100th order)", template: "You've placed {n} orders with us -- thank you for being a loyal customer!", enabled: true },
-  { key: "order_reminder", label: "Order reminder", trigger: "Item left in cart for 24+ hours", template: "You left something in your cart -- still want it?", enabled: true },
-  { key: "engagement", label: "Engagement reminder", trigger: "No app activity for 14 days", template: "We miss you! Come see what's new on Medra.", enabled: false },
-  { key: "delivered", label: "Order delivered", trigger: "Order marked delivered", template: "Your order has arrived! Rate your experience and earn points.", enabled: true },
-  { key: "birthday", label: "Birthday message", trigger: "Customer's birthday", template: "Happy birthday! Here's 20 points on us.", enabled: true },
-  { key: "anniversary", label: "Anniversary message", trigger: "30-day / 6-month / 1-year membership", template: "Thanks for {duration} with Medra -- here's 100 points.", enabled: true },
-  { key: "referral_reward", label: "Referral reward notification", trigger: "Referred friend places first order", template: "Your referral just placed their first order -- 100 points are on the way!", enabled: true },
-  { key: "challenge_complete", label: "Challenge completion", trigger: "Community Challenge target reached", template: "The community hit its goal! Your mystery reward has been added.", enabled: true },
-  { key: "giveaway_winner", label: "Giveaway winner notification", trigger: "Monthly giveaway draw completes", template: "Congratulations -- you won this month's giveaway!", enabled: true },
-];
 
-function BroadcastSection() {
-  const [tab, setTab] = useState("manual");
-  const [segment, setSegment] = useState(BROADCAST_SEGMENTS[0]);
-  const [message, setMessage] = useState("");
-  const [sentLog, setSentLog] = useState([]);
-  const [autoBroadcasts, setAutoBroadcasts] = useState(AUTOMATED_BROADCASTS);
-  const toggleAuto = (key) => setAutoBroadcasts((list) => list.map((a) => (a.key === key ? { ...a, enabled: !a.enabled } : a)));
-  const recipientCount = { "All Customers": 4820, "All Sellers": 312, "All Riders": 884, "Sellers -- Groceries": 96, "Sellers -- Pharmacy": 41, "Riders -- Lagos zone": 512 }[segment];
-  const send = () => {
-    if (!message.trim()) return;
-    setSentLog((l) => [{ segment, message, count: recipientCount, time: "Just now" }, ...l]);
-    setMessage("");
-  };
-  return (
-    <div className="section-pad">
-      <div className="chip-row" style={{ marginBottom: 4 }}>
-        <button className={`chip ${tab === "manual" ? "active" : ""}`} onClick={() => setTab("manual")}>Manual</button>
-        <button className={`chip ${tab === "auto" ? "active" : ""}`} onClick={() => setTab("auto")}>Automatic</button>
-      </div>
-      {tab === "manual" ? (
-        <>
-          <div className="panel enter" style={{ maxWidth: 520 }}>
-            <div className="panel-title">Broadcast a message</div>
-            <div className="field" style={{ marginBottom: 10 }}>
-              <span>Send to</span>
-              <select className="sort-select" value={segment} onChange={(e) => setSegment(e.target.value)}>{BROADCAST_SEGMENTS.map((s) => <option key={s}>{s}</option>)}</select>
-            </div>
-            <div className="muted small" style={{ marginBottom: 10 }}>Will reach ~{recipientCount.toLocaleString()} recipients</div>
-            <div className="field" style={{ marginBottom: 14 }}><span>Message</span><input type="text" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="What do you want to tell them?" /></div>
-            <button className="primary-btn-sm wide" onClick={send}><Send size={13} /> Send broadcast</button>
-          </div>
-          <div className="panel enter">
-            <div className="panel-title">Sent broadcasts</div>
-            {sentLog.length === 0 ? <EmptyStateNote>No broadcasts sent yet -- messages you send to a customer segment will show up here.</EmptyStateNote> : (
-              <div className="list-col">
-                {sentLog.map((b, i) => (
-                  <div key={i} className="pending-row">
-                    <div className="pending-icon" style={{ background: "#EEF2FF", color: "#6D28D9" }}><Send size={13} /></div>
-                    <div className="ti-mid"><div className="card-name">{b.segment}</div><div className="muted">{b.message}</div></div>
-                    <div className="muted small">{b.count.toLocaleString()} sent -- {b.time}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </>
-      ) : (
-        <div className="panel enter">
-          <div className="panel-title-row"><div className="panel-title">Automated messages</div><span className="muted small">Fire automatically when the trigger event happens -- no manual sending needed</span></div>
-          <div className="list-col">
-            {autoBroadcasts.map((a) => (
-              <div key={a.key} className="pending-row">
-                <div className="ti-mid">
-                  <div className="card-name">{a.label} <span className={`status-pill ${a.enabled ? "done" : ""}`}>{a.enabled ? "Enabled" : "Disabled"}</span></div>
-                  <div className="muted small">Trigger: {a.trigger}</div>
-                  <div className="muted small" style={{ fontStyle: "italic" }}>"{a.template}"</div>
-                </div>
-                <button className="ghost-btn-sm" onClick={() => a.enabled ? confirmAction({ title: "Disable this automation?", message: "It will stop running until you turn it back on.", confirmLabel: "Disable" }, () => toggleAuto(a.key)) : toggleAuto(a.key)}>{a.enabled ? "Disable" : "Enable"}</button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
-const DEFAULT_PERMS = {
-  "Support Agent": { "View orders": true, "Refund orders": false, "Suspend accounts": false, "Edit commissions": false, "View financials": false, "Post announcements": false },
-  "Finance Reviewer": { "View orders": true, "Refund orders": true, "Suspend accounts": false, "Edit commissions": false, "View financials": true, "Post announcements": false },
-  "Content Moderator": { "View orders": false, "Refund orders": false, "Suspend accounts": true, "Edit commissions": false, "View financials": false, "Post announcements": true },
-  "Ops Manager": { "View orders": true, "Refund orders": true, "Suspend accounts": true, "Edit commissions": false, "View financials": true, "Post announcements": true },
-};
+
+
+
+
+
 
 const ACTIVE_SESSIONS = [
   { id: "s1", device: "MacBook Pro -- Chrome", location: "Lagos, Nigeria", ip: "197.210.28.114", lastActive: "Active now", current: true, icon: Monitor },
@@ -2091,52 +1959,11 @@ const ACTIVE_SESSIONS = [
   { id: "s3", device: "Windows PC -- Edge", location: "Abuja, Nigeria", ip: "105.112.4.87", lastActive: "3 days ago", current: false, icon: Monitor },
 ];
 
-const REPORT_TYPES = ["Weekly GMV report", "Vendor performance report", "Rider safety report", "Refunds & disputes summary"];
-const FREQUENCIES = ["Daily", "Weekly", "Monthly"];
-const SCHEDULED_REPORTS = [
-  { id: "sr1", report: "Weekly GMV report", frequency: "Weekly", email: "admin@medra.com", nextRun: "Mon, Aug 24" },
-  { id: "sr2", report: "Vendor performance report", frequency: "Monthly", email: "admin@medra.com", nextRun: "Sep 1" },
-];
 
-function ReportsScreen() {
-  const [scheduled, setScheduled] = useState(SCHEDULED_REPORTS);
-  const [report, setReport] = useState(REPORT_TYPES[0]);
-  const [frequency, setFrequency] = useState("Weekly");
-  const [email, setEmail] = useState("admin@medra.com");
-  const nextRunFor = (freq) => (freq === "Daily" ? "Tomorrow" : freq === "Weekly" ? "Mon, next week" : "1st of next month");
-  const schedule = () => {
-    if (!email.trim()) return;
-    setScheduled((s) => [...s, { id: `sr-${Date.now()}`, report, frequency, email, nextRun: nextRunFor(frequency) }]);
-  };
-  const cancel = (id) => setScheduled((s) => s.filter((r) => r.id !== id));
-  return (
-    <div className="section-pad">
-      <div className="panel enter">
-        <div className="panel-title">Schedule a recurring report</div>
-        <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-          <div className="field" style={{ flex: 1 }}><span>Report</span><select className="sort-select" value={report} onChange={(e) => setReport(e.target.value)}>{REPORT_TYPES.map((r) => <option key={r}>{r}</option>)}</select></div>
-          <div className="field" style={{ flex: 1 }}><span>Frequency</span><select className="sort-select" value={frequency} onChange={(e) => setFrequency(e.target.value)}>{FREQUENCIES.map((f) => <option key={f}>{f}</option>)}</select></div>
-        </div>
-        <div className="field" style={{ marginBottom: 14 }}><span>Send to</span><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@medra.com" /></div>
-        <button className="primary-btn-sm" onClick={schedule}><Send size={13} /> Schedule delivery</button>
-      </div>
-      <div className="panel enter">
-        <div className="panel-title">Scheduled reports</div>
-        {scheduled.length === 0 ? <EmptyStateNote>No reports scheduled -- set one up above and it'll appear here with its frequency and next send date.</EmptyStateNote> : (
-          <div className="list-col">
-            {scheduled.map((r) => (
-              <div key={r.id} className="pending-row">
-                <FileBarChart size={15} />
-                <div className="ti-mid"><div className="card-name">{r.report}</div><div className="muted small">{r.frequency} -- sent to {r.email} -- next: {r.nextRun}</div></div>
-                <button className="ghost-btn-sm" onClick={() => cancel(r.id)}>Cancel</button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
+
+
+
+
 
 function AdminWalkthroughModal({ onClose }) {
   const steps = [
@@ -2669,10 +2496,7 @@ function StaffLoginScreen({ onLogin }) {
    <ConfirmHost /> (mounted once at the app root) renders the dialog.
    ------------------------------------------------------------ */
 let _confirmHandler = null;
-function confirmAction(opts, onConfirm) {
-  if (_confirmHandler) _confirmHandler({ ...opts, onConfirm });
-  else onConfirm();
-}
+
 function ConfirmHost() {
   const [req, setReq] = useState(null);
   useEffect(() => {

@@ -1,19 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
-  Bell, MessageCircle, ChevronDown, Calendar, Users, Store, Truck, Sparkles,
-  User as UserIcon, Package, LayoutGrid, ClipboardList, BadgeCheck,
-  Navigation, CreditCard, Wallet, ArrowLeftRight, PlusCircle, Percent,
-  AlertTriangle, ScrollText, LifeBuoy, Mail, ShieldAlert, Tag, Gift,
-  Crown, Megaphone, FileBarChart, TrendingUp, Settings, LayoutDashboard,
-  LogOut, ArrowUp, Check, X, Star, ChevronRight, ShoppingBag, UserPlus,
-  ShieldCheck, Server, Database, Cpu, HardDrive, Users2, FileText, Flag,
-  Search, FileDown, Eye, Send, Lock, Monitor, Smartphone, History, Clock, PenLine, Inbox, Image as ImageIcon, CheckCircle2, Pencil,
-  ArrowRight, Play, Heart, ShoppingCart, Headphones, BarChart3, RefreshCw, MapPin, Circle, CircleCheck, Menu, Compass, Cross,
-} from "lucide-react";
-import {
-  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
-  PieChart, Pie, Cell,
-} from "recharts";
+import { Bell, MessageCircle, ChevronDown, Calendar, Users, Store, Truck, Sparkles, User as UserIcon, ClipboardList, BadgeCheck, Wallet, AlertTriangle, LifeBuoy, Mail, ShieldAlert, TrendingUp, LayoutDashboard, LogOut, ArrowUp, Check, X, Star, ChevronRight, ShieldCheck, FileText, Search, FileDown, Eye, Send, Lock, Monitor, Smartphone, History, Clock, Inbox, Image as ImageIcon, CheckCircle2, Pencil, Headphones, BarChart3, RefreshCw, Circle, CircleCheck, Menu, Compass, Cross } from "lucide-react";
+
 
 const money = (n) => `₦${Math.round(n).toLocaleString("en-NG")}`;
 
@@ -52,28 +39,12 @@ function orderBreakdown(o) {
    MOCK DATA
    ============================================================ */
 
-const KPIS = [
-  { key: "revenue", label: "Total Revenue", value: money(15680250), delta: "+18.6%", deltaMonth: "+24.1%", icon: Wallet, bg: "#EEF2FF", fg: "#4F46E5", spark: [30, 42, 38, 55, 48, 62, 70] },
-  { key: "orders", label: "Total Orders", value: "24,850", delta: "+12.4%", deltaMonth: "+31.8%", icon: ClipboardList, bg: "#ECFDF5", fg: "#16A34A", spark: [20, 25, 22, 34, 30, 40, 46] },
-  { key: "users", label: "Total Users", value: "48,932", delta: "+9.7%", deltaMonth: "+22.3%", icon: Users, bg: "#F5F3FF", fg: "#7C3AED", spark: [40, 38, 44, 41, 48, 45, 52] },
-  { key: "riders", label: "Active Riders", value: "2,350", delta: "+6.1%", deltaMonth: "+14.9%", icon: Truck, bg: "#FFF7ED", fg: "#EA580C", spark: [18, 22, 20, 26, 24, 29, 31] },
-  { key: "sellers", label: "Active Sellers", value: "3,650", delta: "+8.3%", deltaMonth: "+19.2%", icon: Store, bg: "#EFF6FF", fg: "#2563EB", spark: [12, 15, 14, 19, 17, 21, 24] },
-  { key: "verifications", label: "Pending Verifications", value: "126", delta: "+5.3%", deltaMonth: "+11.6%", icon: BadgeCheck, bg: "#FEF2F2", fg: "#DC2626", spark: [8, 10, 9, 13, 11, 14, 16] },
-];
 
-const REVENUE_TREND = [
-  { d: "Mon", v: 9200000 }, { d: "Tue", v: 10800000 }, { d: "Wed", v: 9800000 }, { d: "Thu", v: 12200000 },
-  { d: "Fri", v: 11400000 }, { d: "Sat", v: 14100000 }, { d: "Sun", v: 15680250 },
-];
-const LAST_WEEK_REVENUE_TREND = REVENUE_TREND.map((d) => ({ d: d.d, v: Math.round(d.v * 0.91) }));
 
-const ORDER_MIX = [
-  { name: "Delivered", value: 15230, display: "15,230 (61.3%)", color: "#16A34A" },
-  { name: "Preparing", value: 5240, display: "5,240 (21.1%)", color: "#2563EB" },
-  { name: "Out for Delivery", value: 2450, display: "2,450 (9.9%)", color: "#F97316" },
-  { name: "Placed", value: 1930, display: "1,930 (7.8%)", color: "#7C3AED" },
-  { name: "Cancelled", value: 0, display: "0 (0.0%)", color: "#94A3B8" },
-];
+
+
+
+
 
 const SUPPORT_KPIS = [
   { key: "open-tickets", label: "Open Tickets", value: "128", delta: "-4.2%", deltaMonth: "-11%", icon: LifeBuoy, bg: "#FEF2F2", fg: "#DC2626", spark: [150, 142, 138, 145, 133, 130, 128] },
@@ -90,19 +61,9 @@ const RECENT_ACTIVITY = [
   { title: "Ticket escalated", sub: "T-887 escalated to Payment Staff", time: "2 hours ago", icon: AlertTriangle, color: "#EA580C" },
 ];
 
-const TOP_CATEGORIES = [
-  { label: "Pharmacy & Health", value: money(6250), pct: 100, share: "39.9%", color: "#2563EB" },
-  { label: "Groceries", value: money(4120), pct: 66, share: "26.3%", color: "#16A34A" },
-  { label: "Electronics", value: money(2350), pct: 38, share: "15.0%", color: "#7C3AED" },
-  { label: "Fashion", value: money(1860), pct: 30, share: "11.9%", color: "#F97316" },
-  { label: "Home & Living", value: money(1100), pct: 18, share: "7.0%", color: "#EC4899" },
-];
 
-const PENDING_VERIFICATIONS = [
-  { label: "New Store", value: 24, icon: Store, color: "#16A34A" },
-  { label: "New Riders", value: 45, icon: Truck, color: "#2563EB" },
-  { label: "New Documents", value: 38, icon: FileText, color: "#7C3AED" },
-];
+
+
 
 const SUPPORT_OVERVIEW = [
   { label: "Open Tickets", value: 128, icon: LifeBuoy, color: "#DC2626" },
@@ -111,20 +72,9 @@ const SUPPORT_OVERVIEW = [
   { label: "Resolved Today", value: 72, icon: Check, color: "#16A34A" },
 ];
 
-const PAYMENT_METHODS = [
-  { label: "Card Payments", value: money(8248000), pct: 52.6, color: "#2563EB" },
-  { label: "Wallet Payments", value: money(4124000), pct: 26.3, color: "#16A34A" },
-  { label: "Bank Transfer", value: money(2446000), pct: 15.6, color: "#F97316" },
-  { label: "Other Methods", value: money(862250), pct: 5.5, color: "#7C3AED" },
-];
 
-const SYSTEM_OVERVIEW = [
-  { label: "System Uptime", value: "99.9%", sub: "All systems operational", icon: Server, color: "#16A34A" },
-  { label: "Database Status", value: "Healthy", sub: "All good", icon: Database, color: "#2563EB" },
-  { label: "Server Load", value: "23%", sub: "Normal", icon: Cpu, color: "#F97316" },
-  { label: "Storage Used", value: "45%", sub: "of 500 GB", icon: HardDrive, color: "#7C3AED" },
-  { label: "Daily Active Users", value: "12,450", sub: "+11.2%", icon: Users2, color: "#16A34A" },
-];
+
+
 
 const AUTO_TAG_RULES = [
   { tag: "Refund", keywords: ["refund", "money back", "reimburse"] },
@@ -150,18 +100,9 @@ const DISPUTES = [
   { id: "D-221", order: "O5540", customer: "Priya M.", amount: 18400, reason: "Item damaged on arrival", lockedBy: null },
   { id: "D-219", order: "O5522", customer: "Devon K.", amount: 27100, reason: "Order never delivered", lockedBy: { name: "Tomiwa Bello", since: "9:05 AM" } },
 ];
-const VENDOR_APPS = [
-  { id: "V-77", name: "Wildflower Bakehouse", category: "Bakery", city: "Chicago, IL", applied: "2 days ago" },
-  { id: "V-76", name: "Iron Gate Hardware", category: "Home", applied: "3 days ago", city: "Evanston, IL" },
-];
-const EXISTING_SELLER_NAMES = ["Wildflower Bakery", "Northside Espresso Bar", "Fresh Fields Grocery", "Runwell Sneaker Co.", "Ceramic & Co."];
-function findSimilarSeller(name) {
-  const words = name.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
-  return EXISTING_SELLER_NAMES.find((existing) => {
-    const existingWords = existing.toLowerCase().split(/\s+/).filter((w) => w.length > 3);
-    return words.some((w) => existingWords.includes(w));
-  });
-}
+
+
+
 
 const DATE_PRESETS = ["Today", "Yesterday", "Last 7 days", "Aug 12 - Aug 19, 2026", "Last 30 days", "This month"];
 
@@ -460,97 +401,11 @@ const ADMIN_USERS_LIST = [
   { id: "U3", name: "Devon King", email: "devon@example.com", orders: 12, joined: "2025" },
 ];
 
-function AccountSuspendControl({ suspension, onSuspend, onUnsuspend }) {
-  const [reason, setReason] = useState("");
-  const [confirming, setConfirming] = useState(false);
-  return (
-    <div className="field" style={{ marginTop: 16 }}>
-      <span>Account status</span>
-      {suspension ? (
-        <div className="pending-row" style={{ marginTop: 4 }}>
-          <div className="ti-mid"><div className="muted small">Suspended by {suspension.by}, {suspension.at}</div><div className="muted small">Reason: {suspension.reason}</div></div>
-          <button className="ghost-btn-sm" onClick={onUnsuspend}>Restore access</button>
-        </div>
-      ) : confirming ? (
-        <div style={{ marginTop: 6 }}>
-          <input type="text" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason for suspension (required)" style={{ width: "100%", marginBottom: 8 }} />
-          <div className="cat-top" style={{ gap: 8 }}>
-            <button className="ghost-btn-sm" onClick={() => { setConfirming(false); setReason(""); }}>Cancel</button>
-            <button className="primary-btn-sm" style={{ background: "#DC2626" }} disabled={!reason.trim()} onClick={() => { onSuspend(reason.trim()); setConfirming(false); setReason(""); }}>Confirm suspension</button>
-          </div>
-        </div>
-      ) : (
-        <button className="primary-btn-sm" style={{ marginTop: 6, background: "#DC2626" }} onClick={() => setConfirming(true)}>Suspend this account</button>
-      )}
-    </div>
-  );
-}
 
-function AdminUserDetailModal({ user, note, onSaveNote, viewAsLog, onViewAs, onClose, suspension, onSuspend, onUnsuspend }) {
-  const [draft, setDraft] = useState(note || "");
-  const [saved, setSaved] = useState(false);
-  const save = () => { onSaveNote(user.id, draft); setSaved(true); setTimeout(() => setSaved(false), 1500); };
-  const impersonations = (viewAsLog || []).filter((l) => l.target === user.name);
-  return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="confirm-modal enter" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={onClose}><X size={16} /></button>
-        <div className="driver-avatar" style={{ width: 44, height: 44, fontSize: 15, marginBottom: 10 }}>{user.name.split(" ").map((w) => w[0]).join("")}</div>
-        <div className="card-name" style={{ fontSize: 16, marginBottom: 2 }}>{user.name} {suspension && <span className="status-pill delay" style={{ marginLeft: 6 }}>Suspended</span>}</div>
-        <div className="muted" style={{ marginBottom: 16 }}>{user.email}</div>
-        <div className="list-col">
-          <div className="cat-top"><span className="muted">User ID</span><span className="mono">{user.id}</span></div>
-          <div className="cat-top"><span className="muted">Total orders</span><span>{user.orders}</span></div>
-          <div className="cat-top"><span className="muted">Joined</span><span>{user.joined}</span></div>
-        </div>
-        <button className="ghost-btn-sm" style={{ marginTop: 10 }} onClick={() => { onViewAs?.(user.name); onClose(); }}><Eye size={12} /> View as this user</button>
-        <div className="field" style={{ marginTop: 16 }}>
-          <span>Internal note -- staff only, not visible to the customer</span>
-          <textarea rows={3} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="e.g. Flagged for repeat late-cancellation, be extra clear on ETAs" style={{ border: "1px solid var(--border)", borderRadius: 10, padding: "8px 10px", fontSize: 12.5, fontFamily: "inherit", resize: "vertical" }} />
-        </div>
-        <button className="ghost-btn-sm" style={{ marginTop: 8 }} onClick={save}>{saved ? <><Check size={12} /> Saved</> : "Save note"}</button>
-        <AccountSuspendControl suspension={suspension} onSuspend={(reason) => onSuspend(user.id, user.name, reason)} onUnsuspend={() => onUnsuspend(user.id, user.name)} />
-        <div className="field" style={{ marginTop: 16 }}>
-          <span>Impersonation history -- read-only, from the staff audit log</span>
-          {impersonations.length === 0 ? (
-            <div className="muted small" style={{ marginTop: 4 }}>No staff member has viewed as this user.</div>
-          ) : (
-            <div className="list-col" style={{ marginTop: 4 }}>
-              {impersonations.map((l, i) => (
-                <div key={i} className="cat-top"><span className="muted small">{l.actor}</span><span className="muted small">{l.time}</span></div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
 
-function UsersSection({ logView, viewAsLog, onViewAs, suspensions, onSuspend, onUnsuspend }) {
-  const [viewUser, setViewUser] = useState(null);
-  const [notes, setNotes] = useState({});
-  const saveNote = (id, text) => setNotes((n) => ({ ...n, [id]: text }));
-  return (
-    <div className="section-pad">
-      {viewUser && <AdminUserDetailModal user={viewUser} note={notes[viewUser.id]} onSaveNote={saveNote} viewAsLog={viewAsLog} onViewAs={onViewAs} onClose={() => setViewUser(null)} suspension={suspensions?.[`user:${viewUser.id}`]} onSuspend={(id, name, reason) => onSuspend("user", id, name, reason)} onUnsuspend={(id, name) => onUnsuspend("user", id, name)} />}
-      <div className="panel enter">
-        <div className="panel-title">Users</div>
-        <table className="admin-table">
-          <thead><tr><th>Name</th><th>Email</th><th>Orders</th><th>Joined</th><th></th></tr></thead>
-          <tbody>
-            {ADMIN_USERS_LIST.map((u) => (
-              <tr key={u.id}>
-                <td>{u.name} {notes[u.id] && <span title="Has an internal note" style={{ marginLeft: 4 }}><PenLine size={11} color="#7C3AED" style={{ verticalAlign: "middle" }} /></span>} {suspensions?.[`user:${u.id}`] && <span className="status-pill delay" style={{ marginLeft: 4 }}>Suspended</span>}</td><td className="muted">{u.email}</td><td className="mono">{u.orders}</td><td>{u.joined}</td>
-                <td><button className="row-link" onClick={() => { setViewUser(u); logView?.("User", u.name, "users"); }}>View <ChevronRight size={13} /></button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
+
+
+
 
 const ADMIN_RIDERS_LIST = [
   { id: "R1", name: "John Rider", vehicle: "Motorcycle", trips: 1284, rating: 4.92, status: "online" },
@@ -558,76 +413,13 @@ const ADMIN_RIDERS_LIST = [
   { id: "R3", name: "Priya S.", vehicle: "Car", trips: 2103, rating: 4.95, status: "online" },
 ];
 
-function AdminRiderDetailModal({ rider, onClose, suspension, onSuspend, onUnsuspend }) {
-  return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="confirm-modal enter" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={onClose}><X size={16} /></button>
-        <div className="driver-avatar" style={{ width: 44, height: 44, fontSize: 15, marginBottom: 10 }}>{rider.name.split(" ").map((w) => w[0]).join("")}</div>
-        <div className="card-name" style={{ fontSize: 16, marginBottom: 2 }}>{rider.name} {suspension && <span className="status-pill delay" style={{ marginLeft: 6 }}>Suspended</span>}</div>
-        <div className="muted" style={{ marginBottom: 16 }}>{rider.vehicle}</div>
-        <div className="list-col">
-          <div className="cat-top"><span className="muted">Rider ID</span><span className="mono">{rider.id}</span></div>
-          <div className="cat-top"><span className="muted">Total trips</span><span>{rider.trips}</span></div>
-          <div className="cat-top"><span className="muted">Rating</span><span>{rider.rating}</span></div>
-          <div className="cat-top"><span className="muted">Status</span><span className={`status-pill ${rider.status === "online" ? "done" : "prep"}`}>{rider.status}</span></div>
-        </div>
-        <AccountSuspendControl suspension={suspension} onSuspend={(reason) => onSuspend(rider.id, rider.name, reason)} onUnsuspend={() => onUnsuspend(rider.id, rider.name)} />
-      </div>
-    </div>
-  );
-}
 
-function RidersSection({ suspensions, onSuspend, onUnsuspend, logView }) {
-  const [viewRider, setViewRider] = useState(null);
-  return (
-    <div className="section-pad">
-      {viewRider && <AdminRiderDetailModal rider={viewRider} onClose={() => setViewRider(null)} suspension={suspensions?.[`rider:${viewRider.id}`]} onSuspend={(id, name, reason) => onSuspend("rider", id, name, reason)} onUnsuspend={(id, name) => onUnsuspend("rider", id, name)} />}
-      <div className="panel enter">
-        <div className="panel-title">Riders / Drivers</div>
-        <table className="admin-table">
-          <thead><tr><th>Name</th><th>Vehicle</th><th>Trips</th><th>Rating</th><th>Status</th><th></th></tr></thead>
-          <tbody>
-            {ADMIN_RIDERS_LIST.map((r) => (
-              <tr key={r.id}>
-                <td>{r.name} {suspensions?.[`rider:${r.id}`] && <span className="status-pill delay" style={{ marginLeft: 4 }}>Suspended</span>}</td><td className="muted">{r.vehicle}</td><td className="mono">{r.trips}</td><td>{r.rating}</td>
-                <td><span className={`status-pill ${r.status === "online" ? "done" : "prep"}`}>{r.status}</span></td>
-                <td><button className="row-link" onClick={() => { setViewRider(r); logView?.("Rider", r.name, "riders"); }}>View <ChevronRight size={13} /></button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
 
-const ADMIN_PAYOUTS_LIST = [
-  { id: "P1", recipient: "Northside Espresso Bar", type: "Seller", amount: 128400, status: "paid", date: "Aug 18" },
-  { id: "P2", recipient: "John Rider", type: "Rider", amount: 24600, status: "paid", date: "Aug 18" },
-  { id: "P3", recipient: "Fresh Fields Grocery", type: "Seller", amount: 96200, status: "pending", date: "Aug 21" },
-];
 
-function PayoutsSettlementsSection() {
-  return (
-    <div className="section-pad">
-      <div className="panel enter">
-        <div className="panel-title">Payouts & Settlements</div>
-        <table className="admin-table">
-          <thead><tr><th>Recipient</th><th>Type</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead>
-          <tbody>
-            {ADMIN_PAYOUTS_LIST.map((p) => (
-              <tr key={p.id}>
-                <td>{p.recipient}</td><td className="muted">{p.type}</td><td className="mono">{money(p.amount)}</td><td className="muted">{p.date}</td>
-                <td><span className={`status-pill ${p.status === "paid" ? "done" : "prep"}`}>{p.status}</span></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
+
+
+
+
 
 function ScreenSkeleton() {
   return (
@@ -1422,127 +1214,16 @@ function DisputesSection() {
   );
 }
 
-const img = (seed, size = 300) => `https://picsum.photos/seed/${seed}/${size}/${size}`;
-const ADMIN_PRODUCT_OVERSIGHT = [
-  { id: "ap1", name: "Wireless Earbuds Pro", seller: "Ridgeview Electronics", category: "Electronics", price: 7999, stock: 24, image: null },
-  { id: "ap2", name: "Espresso Machine", seller: "Ridgeview Electronics", category: "Home", price: 24900, stock: 9, image: null },
-  { id: "ap3", name: "Running Sneakers", seller: "Runwell Sneaker Co.", category: "Fashion", price: 8999, stock: 31, image: null },
-  { id: "ap4", name: "Cold Brew Concentrate", seller: "Northside Espresso Bar", category: "Groceries", price: 1299, stock: 24, image: null },
-  { id: "ap5", name: "Ceramic Vase Set", seller: "Ceramic & Co.", category: "Home", price: 5400, stock: 12, image: null },
-];
 
-function ProductOversightSection() {
-  const [products, setProducts] = useState(ADMIN_PRODUCT_OVERSIGHT);
-  const fileRefs = useRef({});
-  const handlePhoto = (id, e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setProducts((ps) => ps.map((p) => (p.id === id ? { ...p, image: reader.result } : p)));
-    reader.readAsDataURL(file);
-  };
-  return (
-    <div className="section-pad">
-      <div className="panel enter">
-        <div className="panel-title-row"><div className="panel-title">Products</div><span className="muted small">Moderate listing photos across every seller</span></div>
-        <div className="feature-grid">
-          {products.map((p) => (
-            <div key={p.id} className="feature-card">
-              <div className="product-photo-wrap">
-                <img src={p.image || img(p.id)} alt={p.name} className="product-photo" />
-                <input type="file" accept="image/*" style={{ display: "none" }} ref={(el) => (fileRefs.current[p.id] = el)} onChange={(e) => handlePhoto(p.id, e)} />
-                <button className="product-photo-edit" onClick={() => fileRefs.current[p.id]?.click()}><ImageIcon size={12} /> Change photo</button>
-              </div>
-              <div className="feature-top"><div className="card-name">{p.name}</div><span className="status-pill done">{p.stock} in stock</span></div>
-              <div className="muted">{p.seller} -- {p.category}</div>
-              <div className="cat-top" style={{ marginTop: 8 }}><span className="mono">{money(p.price)}</span></div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
 
-const ADMIN_ACTIVE_SELLERS = [
-  { id: "S1", name: "Northside Espresso Bar", category: "Grocery & Cafe", orders: 812, rating: 4.8, status: "active" },
-  { id: "S2", name: "Fresh Fields Grocery", category: "Groceries", orders: 1204, rating: 4.6, status: "active" },
-  { id: "S3", name: "Bright Pharmacy", category: "Pharmacy", orders: 640, rating: 4.9, status: "active" },
-];
 
-function AdminSellerDetailModal({ seller, onClose, suspension, onSuspend, onUnsuspend }) {
-  return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="confirm-modal enter" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={onClose}><X size={16} /></button>
-        <div className="driver-avatar" style={{ width: 44, height: 44, fontSize: 15, marginBottom: 10 }}><Store size={18} /></div>
-        <div className="card-name" style={{ fontSize: 16, marginBottom: 2 }}>{seller.name} {suspension && <span className="status-pill delay" style={{ marginLeft: 6 }}>Suspended</span>}</div>
-        <div className="muted" style={{ marginBottom: 16 }}>{seller.category}</div>
-        <div className="list-col">
-          <div className="cat-top"><span className="muted">Seller ID</span><span className="mono">{seller.id}</span></div>
-          <div className="cat-top"><span className="muted">Total orders</span><span>{seller.orders}</span></div>
-          <div className="cat-top"><span className="muted">Rating</span><span>{seller.rating}</span></div>
-        </div>
-        <AccountSuspendControl suspension={suspension} onSuspend={(reason) => onSuspend(seller.id, seller.name, reason)} onUnsuspend={() => onUnsuspend(seller.id, seller.name)} />
-      </div>
-    </div>
-  );
-}
 
-function VendorAppsSection({ suspensions, onSuspend, onUnsuspend, logView }) {
-  const [items, setItems] = useState(VENDOR_APPS);
-  const [selected, setSelected] = useState(new Set());
-  const [viewSeller, setViewSeller] = useState(null);
-  const toggleSel = (id) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  const toggleAll = () => setSelected((s) => (s.size === items.length ? new Set() : new Set(items.map((v) => v.id))));
-  const bulkClear = () => { setItems((it) => it.filter((v) => !selected.has(v.id))); setSelected(new Set()); };
-  return (
-    <div className="section-pad">
-      {viewSeller && <AdminSellerDetailModal seller={viewSeller} onClose={() => setViewSeller(null)} suspension={suspensions?.[`seller:${viewSeller.id}`]} onSuspend={(id, name, reason) => onSuspend("seller", id, name, reason)} onUnsuspend={(id, name) => onUnsuspend("seller", id, name)} />}
-      <div className="panel enter">
-        <div className="panel-title">Active Sellers</div>
-        <table className="admin-table">
-          <thead><tr><th>Name</th><th>Category</th><th>Orders</th><th>Rating</th><th></th></tr></thead>
-          <tbody>
-            {ADMIN_ACTIVE_SELLERS.map((s) => (
-              <tr key={s.id}>
-                <td>{s.name} {suspensions?.[`seller:${s.id}`] && <span className="status-pill delay" style={{ marginLeft: 4 }}>Suspended</span>}</td><td className="muted">{s.category}</td><td className="mono">{s.orders}</td><td>{s.rating}</td>
-                <td><button className="row-link" onClick={() => { setViewSeller(s); logView?.("Seller", s.name, "sellers"); }}>View <ChevronRight size={13} /></button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div className="panel enter">
-        <div className="panel-title">Vendor applications</div>
-        {items.length === 0 && <EmptyStateNote>No pending vendor applications.</EmptyStateNote>}
-        {items.length > 0 && (
-          <div className="cat-top" style={{ marginBottom: 8 }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 8 }}><input type="checkbox" checked={selected.size === items.length} onChange={toggleAll} /> <span className="muted">Select all</span></label>
-          </div>
-        )}
-        <BulkBar count={selected.size} onApprove={bulkClear} onDeny={bulkClear} onClear={() => setSelected(new Set())} />
-        <div className="list-col">
-          {items.map((v) => {
-            const similar = findSimilarSeller(v.name);
-            return (
-              <div className="pending-row-wrap" key={v.id}>
-                <div className="pending-row">
-                  <input type="checkbox" checked={selected.has(v.id)} onChange={() => toggleSel(v.id)} />
-                  <div className="pending-icon" style={{ background: "#EFF6FF", color: "#2563EB" }}><Store size={14} /></div>
-                  <div className="ti-mid"><div className="card-name">{v.name}</div><div className="muted">{v.category} -- {v.city} -- Applied {v.applied}</div></div>
-                  <button className="round-btn deny" onClick={() => setItems((it) => it.filter((x) => x.id !== v.id))}><X size={13} /></button>
-                  <button className="round-btn approve" onClick={() => setItems((it) => it.filter((x) => x.id !== v.id))}><Check size={13} /></button>
-                </div>
-                {similar && <div className="dup-warning"><AlertTriangle size={12} /> Possible duplicate -- resembles existing seller "{similar}". Review before approving.</div>}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
+
+
+
+
+
+
 
 function NotificationsSection({ onNavigate }) {
   return (
@@ -1661,130 +1342,15 @@ function exportCsv(filename, rows) {
   URL.revokeObjectURL(url);
 }
 
-function AnnouncementsSection() {
-  const [items, setItems] = useState([
-    { title: "System Maintenance", body: "Scheduled May 20, 2:00-4:00 AM" },
-    { title: "New Feature Released", body: "Advanced Analytics now available" },
-  ]);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const post = () => {
-    if (!title.trim()) return;
-    setItems((it) => [{ title, body }, ...it]);
-    setTitle(""); setBody(""); setModalOpen(false);
-  };
-  return (
-    <div className="section-pad">
-      {modalOpen && (
-        <div className="modal-backdrop" onClick={() => setModalOpen(false)}>
-          <div className="confirm-modal enter" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setModalOpen(false)}><X size={16} /></button>
-            <div className="card-name" style={{ fontSize: 16, marginBottom: 12 }}>New announcement</div>
-            <div className="field" style={{ marginBottom: 10 }}><span>Title</span><input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Scheduled maintenance" /></div>
-            <div className="field" style={{ marginBottom: 16 }}><span>Details</span><input type="text" value={body} onChange={(e) => setBody(e.target.value)} placeholder="What should people know?" /></div>
-            <button className="primary-btn-sm wide" onClick={post}>Post announcement</button>
-          </div>
-        </div>
-      )}
-      <div className="panel enter">
-        <div className="panel-title-row"><div className="panel-title">Announcements</div><button className="primary-btn-sm" onClick={() => setModalOpen(true)}>+ New Announcement</button></div>
-        <div className="list-col">
-          {items.map((a, i) => <div key={i} className="pending-row"><div className="ti-mid"><div className="card-name">{a.title}</div><div className="muted">{a.body}</div></div></div>)}
-        </div>
-      </div>
-    </div>
-  );
-}
 
-const BROADCAST_SEGMENTS = ["All Customers", "All Sellers", "All Riders", "Sellers -- Groceries", "Sellers -- Pharmacy", "Riders -- Lagos zone"];
 
-const AUTOMATED_BROADCASTS = [
-  { key: "welcome", label: "Welcome message", trigger: "New account created", template: "Welcome to Medra! Here's 50 points to get you started.", enabled: true },
-  { key: "milestone", label: "Milestone alert", trigger: "Order count milestones (10th, 50th, 100th order)", template: "You've placed {n} orders with us -- thank you for being a loyal customer!", enabled: true },
-  { key: "order_reminder", label: "Order reminder", trigger: "Item left in cart for 24+ hours", template: "You left something in your cart -- still want it?", enabled: true },
-  { key: "engagement", label: "Engagement reminder", trigger: "No app activity for 14 days", template: "We miss you! Come see what's new on Medra.", enabled: false },
-  { key: "delivered", label: "Order delivered", trigger: "Order marked delivered", template: "Your order has arrived! Rate your experience and earn points.", enabled: true },
-  { key: "birthday", label: "Birthday message", trigger: "Customer's birthday", template: "Happy birthday! Here's 20 points on us.", enabled: true },
-  { key: "anniversary", label: "Anniversary message", trigger: "30-day / 6-month / 1-year membership", template: "Thanks for {duration} with Medra -- here's 100 points.", enabled: true },
-  { key: "referral_reward", label: "Referral reward notification", trigger: "Referred friend places first order", template: "Your referral just placed their first order -- 100 points are on the way!", enabled: true },
-  { key: "challenge_complete", label: "Challenge completion", trigger: "Community Challenge target reached", template: "The community hit its goal! Your mystery reward has been added.", enabled: true },
-  { key: "giveaway_winner", label: "Giveaway winner notification", trigger: "Monthly giveaway draw completes", template: "Congratulations -- you won this month's giveaway!", enabled: true },
-];
 
-function BroadcastSection() {
-  const [tab, setTab] = useState("manual");
-  const [segment, setSegment] = useState(BROADCAST_SEGMENTS[0]);
-  const [message, setMessage] = useState("");
-  const [sentLog, setSentLog] = useState([]);
-  const [autoBroadcasts, setAutoBroadcasts] = useState(AUTOMATED_BROADCASTS);
-  const toggleAuto = (key) => setAutoBroadcasts((list) => list.map((a) => (a.key === key ? { ...a, enabled: !a.enabled } : a)));
-  const recipientCount = { "All Customers": 4820, "All Sellers": 312, "All Riders": 884, "Sellers -- Groceries": 96, "Sellers -- Pharmacy": 41, "Riders -- Lagos zone": 512 }[segment];
-  const send = () => {
-    if (!message.trim()) return;
-    setSentLog((l) => [{ segment, message, count: recipientCount, time: "Just now" }, ...l]);
-    setMessage("");
-  };
-  return (
-    <div className="section-pad">
-      <div className="chip-row" style={{ marginBottom: 4 }}>
-        <button className={`chip ${tab === "manual" ? "active" : ""}`} onClick={() => setTab("manual")}>Manual</button>
-        <button className={`chip ${tab === "auto" ? "active" : ""}`} onClick={() => setTab("auto")}>Automatic</button>
-      </div>
-      {tab === "manual" ? (
-        <>
-          <div className="panel enter" style={{ maxWidth: 520 }}>
-            <div className="panel-title">Broadcast a message</div>
-            <div className="field" style={{ marginBottom: 10 }}>
-              <span>Send to</span>
-              <select className="sort-select" value={segment} onChange={(e) => setSegment(e.target.value)}>{BROADCAST_SEGMENTS.map((s) => <option key={s}>{s}</option>)}</select>
-            </div>
-            <div className="muted small" style={{ marginBottom: 10 }}>Will reach ~{recipientCount.toLocaleString()} recipients</div>
-            <div className="field" style={{ marginBottom: 14 }}><span>Message</span><input type="text" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="What do you want to tell them?" /></div>
-            <button className="primary-btn-sm wide" onClick={send}><Send size={13} /> Send broadcast</button>
-          </div>
-          <div className="panel enter">
-            <div className="panel-title">Sent broadcasts</div>
-            {sentLog.length === 0 ? <EmptyStateNote>No broadcasts sent yet.</EmptyStateNote> : (
-              <div className="list-col">
-                {sentLog.map((b, i) => (
-                  <div key={i} className="pending-row">
-                    <div className="pending-icon" style={{ background: "#EEF2FF", color: "#6D28D9" }}><Send size={13} /></div>
-                    <div className="ti-mid"><div className="card-name">{b.segment}</div><div className="muted">{b.message}</div></div>
-                    <div className="muted small">{b.count.toLocaleString()} sent -- {b.time}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </>
-      ) : (
-        <div className="panel enter">
-          <div className="panel-title-row"><div className="panel-title">Automated messages</div><span className="muted small">Fire automatically when the trigger event happens -- no manual sending needed</span></div>
-          <div className="list-col">
-            {autoBroadcasts.map((a) => (
-              <div key={a.key} className="pending-row">
-                <div className="ti-mid">
-                  <div className="card-name">{a.label} <span className={`status-pill ${a.enabled ? "done" : ""}`}>{a.enabled ? "Enabled" : "Disabled"}</span></div>
-                  <div className="muted small">Trigger: {a.trigger}</div>
-                  <div className="muted small" style={{ fontStyle: "italic" }}>"{a.template}"</div>
-                </div>
-                <button className="ghost-btn-sm" onClick={() => a.enabled ? confirmAction({ title: "Disable this automation?", message: "It will stop running until you turn it back on.", confirmLabel: "Disable" }, () => toggleAuto(a.key)) : toggleAuto(a.key)}>{a.enabled ? "Disable" : "Enable"}</button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
-const DEFAULT_PERMS = {
-  "Support Agent": { "View orders": true, "Refund orders": false, "Suspend accounts": false, "Edit commissions": false, "View financials": false, "Post announcements": false },
-  "Finance Reviewer": { "View orders": true, "Refund orders": true, "Suspend accounts": false, "Edit commissions": false, "View financials": true, "Post announcements": false },
-  "Content Moderator": { "View orders": false, "Refund orders": false, "Suspend accounts": true, "Edit commissions": false, "View financials": false, "Post announcements": true },
-  "Ops Manager": { "View orders": true, "Refund orders": true, "Suspend accounts": true, "Edit commissions": false, "View financials": true, "Post announcements": true },
-};
+
+
+
+
+
 
 const ACTIVE_SESSIONS = [
   { id: "s1", device: "MacBook Pro -- Chrome", location: "Lagos, Nigeria", ip: "197.210.28.114", lastActive: "Active now", current: true, icon: Monitor },
@@ -1792,52 +1358,11 @@ const ACTIVE_SESSIONS = [
   { id: "s3", device: "Windows PC -- Edge", location: "Abuja, Nigeria", ip: "105.112.4.87", lastActive: "3 days ago", current: false, icon: Monitor },
 ];
 
-const REPORT_TYPES = ["Weekly GMV report", "Vendor performance report", "Rider safety report", "Refunds & disputes summary"];
-const FREQUENCIES = ["Daily", "Weekly", "Monthly"];
-const SCHEDULED_REPORTS = [
-  { id: "sr1", report: "Weekly GMV report", frequency: "Weekly", email: "admin@medra.com", nextRun: "Mon, Aug 24" },
-  { id: "sr2", report: "Vendor performance report", frequency: "Monthly", email: "admin@medra.com", nextRun: "Sep 1" },
-];
 
-function ReportsScreen() {
-  const [scheduled, setScheduled] = useState(SCHEDULED_REPORTS);
-  const [report, setReport] = useState(REPORT_TYPES[0]);
-  const [frequency, setFrequency] = useState("Weekly");
-  const [email, setEmail] = useState("admin@medra.com");
-  const nextRunFor = (freq) => (freq === "Daily" ? "Tomorrow" : freq === "Weekly" ? "Mon, next week" : "1st of next month");
-  const schedule = () => {
-    if (!email.trim()) return;
-    setScheduled((s) => [...s, { id: `sr-${Date.now()}`, report, frequency, email, nextRun: nextRunFor(frequency) }]);
-  };
-  const cancel = (id) => setScheduled((s) => s.filter((r) => r.id !== id));
-  return (
-    <div className="section-pad">
-      <div className="panel enter">
-        <div className="panel-title">Schedule a recurring report</div>
-        <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-          <div className="field" style={{ flex: 1 }}><span>Report</span><select className="sort-select" value={report} onChange={(e) => setReport(e.target.value)}>{REPORT_TYPES.map((r) => <option key={r}>{r}</option>)}</select></div>
-          <div className="field" style={{ flex: 1 }}><span>Frequency</span><select className="sort-select" value={frequency} onChange={(e) => setFrequency(e.target.value)}>{FREQUENCIES.map((f) => <option key={f}>{f}</option>)}</select></div>
-        </div>
-        <div className="field" style={{ marginBottom: 14 }}><span>Send to</span><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@medra.com" /></div>
-        <button className="primary-btn-sm" onClick={schedule}><Send size={13} /> Schedule delivery</button>
-      </div>
-      <div className="panel enter">
-        <div className="panel-title">Scheduled reports</div>
-        {scheduled.length === 0 ? <EmptyStateNote>No reports scheduled.</EmptyStateNote> : (
-          <div className="list-col">
-            {scheduled.map((r) => (
-              <div key={r.id} className="pending-row">
-                <FileBarChart size={15} />
-                <div className="ti-mid"><div className="card-name">{r.report}</div><div className="muted small">{r.frequency} -- sent to {r.email} -- next: {r.nextRun}</div></div>
-                <button className="ghost-btn-sm" onClick={() => cancel(r.id)}>Cancel</button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
+
+
+
+
 
 function AdminWalkthroughModal({ onClose }) {
   const steps = [
@@ -2366,10 +1891,7 @@ function StaffLoginScreen({ onLogin }) {
    <ConfirmHost /> (mounted once at the app root) renders the dialog.
    ------------------------------------------------------------ */
 let _confirmHandler = null;
-function confirmAction(opts, onConfirm) {
-  if (_confirmHandler) _confirmHandler({ ...opts, onConfirm });
-  else onConfirm();
-}
+
 function ConfirmHost() {
   const [req, setReq] = useState(null);
   useEffect(() => {

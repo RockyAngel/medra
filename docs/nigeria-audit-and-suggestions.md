@@ -602,3 +602,10 @@ These are new -- none repeat the first 150.
 - [Sanwo-Olu rules out reversal of okada ban in Lagos](https://www.ripplesnigeria.com/sanwo-olu-rules-out-reversal-of-okada-ban-in-lagos/)
 - [Lagos govt renews crackdown on okadas](https://www.ripplesnigeria.com/lagos-govt-renews-crackdown-on-okadas/)
 - [FCCPC Digital Lending Regulations 2025](https://blog.lendsqr.com/download-the-fccpc-digital-lending-regulations-2025/)
+
+
+## Round 5 - Full code audit (line by line)
+
+Fixed: (1) Super Admin "Self-Check: Navigation Integrity" crashed (missing RefreshCw import); (2) free-visit vouchers accepted any code shaped like MEDRA-FREE-XXXX - now only codes Super Admin actually issued work, once each (ADMINFREE kept as a demo flag, DEMO_VOUCHER_ENABLED, off before launch); (3) trip-share link token was guessable from the order id - now random; (4) reverse-auction bids must be whole numbers (decimals slipped past the odd-number rule); (5) wallet top-up capped at N5,000,000 and rejects non-finite values; (6) CSV stock import cannot go negative; (7) ~3,000 lines of unreachable duplicate code (copy-pasted admin sections inside Support, dead sections in Admin/Rider/Seller/customer) and ~60 unused imports/variables removed.
+
+Known prototype limits (not bugs): demo logins and mock data are built in; voucher/config sync only works when apps share a page (Combined Preview); no real backend, so nothing is enforced server-side.

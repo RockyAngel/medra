@@ -1,17 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import {
-  Search, Heart, Bell, ShoppingCart, ChevronDown, MapPin, Package,
-  Wallet, Award, Gift, MessageCircle, Home as HomeIcon, CreditCard,
-  Settings, LifeBuoy, LogOut, LayoutDashboard, ArrowUp, Check, X,
-  Star, ChevronRight, Plus, Minus, ShieldCheck, Truck, Clock, Crown,
-  Store, ShoppingBag, Utensils, Cross, Shirt, Smartphone, Sparkles,
-  Send, Copy, Navigation, Phone, Palette, Lock, Unlock, HelpCircle,
-  Shuffle, Disc3, PartyPopper, Camera, CalendarClock, PenLine, Type, Inbox,
-  RotateCcw, SlidersHorizontal, XCircle, ThumbsUp, AlertTriangle,
-  Receipt, Medal, PhoneCall, RefreshCw, Flame, CircleCheck, FileDown, Users, Image as ImageIcon, Target,
-  ArrowRight, Download, Headphones, Tag, User, QrCode, Trophy, Gamepad2, Ticket, HandCoins, TrendingUp, BadgeCheck, Circle, Moon, History, CalendarCheck, Eye, Zap, Menu, Scale,
-  Stethoscope, HeartPulse, Pill, Video, Mic, FileText, CalendarX, CalendarPlus, Compass, UserCircle, Info, Flag,
-} from "lucide-react";
+import { Search, Heart, Bell, ShoppingCart, ChevronDown, MapPin, Package, Wallet, Award, Gift, MessageCircle, Home as HomeIcon, CreditCard, Settings, LifeBuoy, LogOut, LayoutDashboard, Check, X, Star, ChevronRight, Plus, Minus, ShieldCheck, Truck, Clock, Crown, Store, ShoppingBag, Utensils, Cross, Shirt, Smartphone, Sparkles, Send, Copy, Navigation, Phone, Palette, Lock, HelpCircle, Shuffle, PartyPopper, Camera, CalendarClock, PenLine, Type, Inbox, RotateCcw, SlidersHorizontal, XCircle, ThumbsUp, AlertTriangle, Receipt, Medal, PhoneCall, RefreshCw, Flame, CircleCheck, FileDown, Users, Image as ImageIcon, Target, ArrowRight, Download, Headphones, Tag, User, Trophy, Gamepad2, Ticket, HandCoins, TrendingUp, BadgeCheck, Circle, Moon, History, CalendarCheck, Eye, Zap, Menu, Scale, Stethoscope, HeartPulse, Pill, Video, Mic, FileText, CalendarX, CalendarPlus, Compass, UserCircle, Info, Flag } from "lucide-react";
 
 /* ============================================================
    CURRENCY -- Nigerian Naira
@@ -174,8 +162,8 @@ const DONATION_CAUSES = [
    delivery fee; a reward can discount it but never remove it.
    ------------------------------------------------------------ */
 const PRODUCT_COMMISSION_RATE = 0.10;
-const DELIVERY_COMMISSION_NORMAL = 0.15;
-const DELIVERY_COMMISSION_PEAK = 0.10;
+
+
 const PEAK_WINDOWS = [[6, 10], [12, 14], [16, 21]]; // morning rush, lunch, evening rush
 function isPeakHour(date = new Date()) {
   const h = date.getHours();
@@ -388,7 +376,7 @@ const STAGES = [
   { key: "onway", label: "Out for Delivery", at: 55 },
   { key: "delivered", label: "Delivered", at: 100 },
 ];
-const STATUS_COLOR = { placed: "prep", confirmed: "prep", packed: "prep", onway: "route", delivered: "done", cancelled: "delay" };
+
 
 const RECENT_ORDERS = [
   { id: "MD238901", vendor: "Chicken Republic", date: "May 18, 2025", total: 8750, status: "Delivered", cancellable: false },
@@ -508,7 +496,7 @@ const ADDRESSES = [
   { label: "Work", addr: "8 Market Plaza, Victoria Island, Lagos", primary: false },
 ];
 
-const WALLET_TX_TYPES = ["Top-up", "Purchase", "Refund", "Referral", "Reward", "Membership", "Rider tip", "Adjustment", "Withdrawal", "Expiration", "Reversal"];
+
 const WALLET_TX = [
   { id: "TXN-48213", type: "Top-up", label: "Top-up (Bank transfer)", amount: 5000, status: "completed", reference: "PSTK-9F82K3", date: "May 18" },
   { id: "TXN-48190", type: "Purchase", label: "Order #MD23840", amount: -15450, status: "completed", reference: "MD23840", date: "May 16" },
@@ -744,14 +732,7 @@ const ORDER_SIZES = [
   { key: "large", label: "Large", range: "27-45 kg", multiplier: 2, color: "#EA580C" },
   { key: "oversized", label: "Oversized", range: "over 45 kg", multiplier: 3, color: "#DC2626" },
 ];
-function orderSizeForWeight(kg) {
-  const w = Number(kg);
-  if (!(w > 0)) return null;
-  if (w < 16) return ORDER_SIZES[0];
-  if (w <= 27) return ORDER_SIZES[1];
-  if (w <= 45) return ORDER_SIZES[2];
-  return ORDER_SIZES[3];
-}
+
 const orderSizeByKey = (k) => ORDER_SIZES.find((s) => s.key === k) || null;
 function SizeBadge({ sizeKey, weightKg }) {
   const sz = orderSizeByKey(sizeKey);
@@ -761,7 +742,7 @@ function SizeBadge({ sizeKey, weightKg }) {
 
 // Canonical order statuses -- one vocabulary across every app. Legacy/alias
 // labels are normalised so StatusPill always shows one of these five.
-const ORDER_STATUSES = ["Placed", "Preparing", "Out for Delivery", "Delivered", "Cancelled"];
+
 const ORDER_STATUS_ALIASES = { placed: "Placed", "order placed": "Placed", pending: "Placed", confirmed: "Placed", processing: "Preparing", preparing: "Preparing", scheduled: "Placed", onway: "Out for Delivery", "en route": "Out for Delivery", "out for delivery": "Out for Delivery", delivered: "Delivered", "delivered (simulated)": "Delivered", completed: "Delivered", cancelled: "Cancelled", canceled: "Cancelled" };
 const normalizeOrderStatus = (s) => ORDER_STATUS_ALIASES[String(s || "").toLowerCase()] || s;
 function StatusPill({ status }) {
@@ -1432,7 +1413,6 @@ function ProviderMarketplaceScreen({ onOpenProvider }) {
 function ProviderProfileScreen({ providerId, onBack, onBookAppointment }) {
   const provider = providerById(providerId);
   if (!provider) return <div className="section-pad"><EmptyNote>Provider not found.</EmptyNote></div>;
-  const availability = getProviderAvailability(provider.id);
   const CONSULT_LABEL = { video: "Video", audio: "Audio", chat: "Chat", in_person: "In-person" };
   return (
     <div className="section-pad">
@@ -1479,7 +1459,6 @@ function BookAppointmentScreen({ providerId, onBack, onConfirmed, telehealthPlan
   if (!provider) return <div className="section-pad"><EmptyNote>Provider not found.</EmptyNote></div>;
   const availability = getProviderAvailability(provider.id);
   const cost = getVisitCost(provider, telehealthPlan, voucherApplied, { consultType, symptomCount, hasPictures: consultType === "chat" && hasPictures });
-  const gravity = computeSymptomGravity(symptomCount || 0);
   const applyVoucher = () => {
     // Mock voucher check -- Super Admin's Free Visit Approvals screen issues
     // real-looking codes shaped like MEDRA-FREE-XXXXXX; "ADMINFREE" is kept
@@ -1487,7 +1466,14 @@ function BookAppointmentScreen({ providerId, onBack, onConfirmed, telehealthPlan
     // live cross-app database here, so this accepts the *shape* of a real
     // code rather than checking a specific issued code against a shared list.
     const code = voucherInput.trim().toUpperCase();
-    if (code === "ADMINFREE" || /^MEDRA-FREE-[A-Z0-9]{4,8}$/.test(code)) { setVoucherApplied(true); setVoucherError(false); }
+    // Only codes actually issued by Super Admin (single-use) work. The old
+    // "any code that looks right" shape check was a loophole and is gone.
+    const issued = (typeof window !== "undefined" && window.__medraVouchers) || null;
+    const isIssued = issued && issued.has(code);
+    if (isIssued || (DEMO_VOUCHER_ENABLED && code === "ADMINFREE")) {
+      if (isIssued) issued.delete(code); // single use
+      setVoucherApplied(true); setVoucherError(false);
+    }
     else setVoucherError(true);
   };
   const confirmPay = () => {
@@ -3238,9 +3224,18 @@ function ReportIssueModal({ order, onClose, onSubmit }) {
   );
 }
 
+// Prototype-only demo code for quick testing. Set false before any real launch.
+const DEMO_VOUCHER_ENABLED = true;
+function randomToken() {
+  try {
+    const a = new Uint8Array(9); crypto.getRandomValues(a);
+    return Array.from(a, (x) => x.toString(36).padStart(2, "0")).join("").slice(0, 16);
+  } catch (e) { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+}
 function ShareTripModal({ order, onClose }) {
   const [copied, setCopied] = useState(false);
-  const shareLink = `https://medra.app/track/${order.id}?token=${order.id.toLowerCase()}live`;
+  const [shareToken] = useState(randomToken);
+  const shareLink = `https://medra.app/track/${order.id}?token=${shareToken}`;
   const copyLink = () => {
     setCopied(true);
     setTimeout(() => setCopied(false), 2200);
@@ -3836,7 +3831,7 @@ function WalletScreen({ wallet, points, onConvert, cards, walletTx, onTopUp, aut
 
   const pay = () => {
     const amt = Number(topUpAmount);
-    if (!amt || amt <= 0) return;
+    if (!amt || !Number.isFinite(amt) || amt <= 0 || amt > 5000000) return; // sane per-top-up cap
     if (topUpMethod === "transfer" && !topUpProofPhoto) return;
     setPaying(true);
     setTimeout(() => {
@@ -4714,7 +4709,8 @@ function RewardsScreen({ points, lifetimePoints, gamesDone, onGameComplete, cele
               </div>
             )}
             <div className="muted small" style={{ marginBottom: 8 }}>You're up against 6 real randomized bidders, each picking their own strategy too.</div>
-            <button className="ghost-btn-sm" disabled={!auctionBid || auctionBid < 1 || auctionBid > points} onClick={() => {
+            <button className="ghost-btn-sm" disabled={!auctionBid || !Number.isInteger(auctionBid) || auctionBid < 1 || auctionBid > points} onClick={() => {
+              if (!Number.isInteger(auctionBid) || auctionBid < 1 || auctionBid > points) return;
               const botNames = ["Bot A", "Bot B", "Bot C", "Bot D", "Bot E", "Bot F"];
               const bots = botNames.map((who) => {
                 const mode = Math.random() < 0.5 ? "lowest" : "highest";
@@ -6524,7 +6520,6 @@ function SubscriptionsScreen({ subscriptions, wallet, onCharge, onCancel, onPaus
     );
   }
   const activeSubs = subscriptions.filter((s) => s.active);
-  const anyPaused = activeSubs.some((s) => s.paused);
   const allPaused = activeSubs.length > 0 && activeSubs.every((s) => s.paused);
   return (
     <div className="section-pad">
@@ -7294,16 +7289,7 @@ function SupportScreen({ membership, orders, prefilledOrderId, onConsumePrefill 
   );
 }
 
-function SimpleInfoScreen({ title, rows }) {
-  return (
-    <div className="section-pad">
-      <div className="panel enter">
-        <div className="panel-title">{title}</div>
-        <div className="list-col">{rows.map(([a, b]) => <div key={a} className="flag-row"><div className="ti-mid"><div className="card-name">{a}</div><div className="muted">{b}</div></div></div>)}</div>
-      </div>
-    </div>
-  );
-}
+
 
 /* ============================================================
    ONBOARDING

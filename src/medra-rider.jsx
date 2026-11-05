@@ -1,11 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
-  Bell, MessageCircle, ChevronDown, Package, Truck, Wallet, Calendar, Plus,
-  ShieldAlert, Settings, LifeBuoy, LogOut, LayoutDashboard, ArrowUp,
-  Check, X, Star, Clock, MapPin, Phone, Navigation, Power, TrendingUp,
-  Target, ShieldCheck, Zap, CheckCircle2, RefreshCw, ChevronRight, FileDown, User as UserIcon, Award, HelpCircle, Wrench, Gift, Copy, AlertTriangle, Inbox, Send, Users, Image as ImageIcon, Sparkles, Medal,
-  ArrowRight, Play, Heart, Search, ShoppingCart, Headphones, ShoppingBag, Cross, Shirt, Smartphone, Home as HomeIcon, Utensils, DollarSign, Flame, Menu, BadgeCheck, CircleCheck, Compass, RotateCcw, PhoneCall, MessageSquare,
-} from "lucide-react";
+import { Bell, MessageCircle, ChevronDown, Package, Truck, Wallet, Calendar, Plus, ShieldAlert, Settings, LifeBuoy, LogOut, LayoutDashboard, ArrowUp, Check, X, Star, Clock, MapPin, Phone, Navigation, Power, TrendingUp, Target, ShieldCheck, Zap, CheckCircle2, RefreshCw, ChevronRight, FileDown, User as UserIcon, Award, HelpCircle, Wrench, Gift, Copy, AlertTriangle, Inbox, Send, Users, Image as ImageIcon, Sparkles, Medal, ArrowRight, Play, Heart, ShoppingCart, Headphones, ShoppingBag, Cross, DollarSign, Flame, Menu, BadgeCheck, CircleCheck, Compass, RotateCcw, PhoneCall, MessageSquare } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 
 const money = (n) => `₦${Math.round(n).toLocaleString("en-NG")}`;
@@ -694,7 +688,6 @@ function DashboardScreen({ onWaitingFee, onFailedDelivery, verificationHold = nu
   };
   useEffect(() => { setDeliveryPhoto(null); setPinEntry(""); setWaitedSince(null); setWaitFeePaid(false); }, [activeTrip?.id]);
   if (activeTrip) {
-    const stage = STAGES[stageIdx];
     const nextLabel = ["Confirm arrival at pickup", "Confirm items picked up", "Start heading to drop-off", "Confirm arrival at drop-off", "Complete delivery"][stageIdx];
     const batchCandidates = newOrders.filter((o) => o.area === activeTrip.area);
     return (
@@ -1179,7 +1172,6 @@ function RiderTelehealthScreen({ available, telehealthSpend, onPay }) {
 function EarningsScreen({ cashInHand = 0, cashLimit = 50000, onPayInCash, todayEarnings, withdrawals, submitWithdrawal, telehealthSpend = 0, gearSpend = 0 }) {
   const week = EARNINGS_TREND.reduce((a, b) => a + b.v, 0) - 3946 + todayEarnings - telehealthSpend - gearSpend;
   const month = MONTHLY_TREND.reduce((a, b) => a + b.v, 0) + todayEarnings - telehealthSpend - gearSpend;
-  const peak = isPeakHour();
   const [range, setRange] = useState("week");
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [goal, setGoal] = useState(20000);
@@ -2138,16 +2130,7 @@ function RiderSupportScreen({ tickets, onSubmit }) {
   );
 }
 
-function SimpleInfoScreen({ title, rows }) {
-  return (
-    <div className="section-pad">
-      <div className="panel enter">
-        <div className="panel-title">{title}</div>
-        <div className="list-col">{rows.map(([a, b]) => <div key={a} className="flag-row"><div className="ti-mid"><div className="card-name">{a}</div><div className="muted">{b}</div></div></div>)}</div>
-      </div>
-    </div>
-  );
-}
+
 
 /* ============================================================
    APP SHELL

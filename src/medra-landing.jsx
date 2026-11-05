@@ -1,9 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
-  ShoppingBag, Truck, Store, ArrowRight, MapPin, Star, ShieldCheck,
-  Zap, Package, Clock, Menu, X, ChevronRight, CircleCheck, Award,
-  Palette, Users, Gift, Wallet, TrendingUp, BadgeCheck, Clock3, Crown,
-} from "lucide-react";
+import { ShoppingBag, Truck, Store, ArrowRight, Star, ShieldCheck, Zap, Menu, X, ChevronRight, CircleCheck, Award, Palette, Users, Gift, BadgeCheck, Clock3, Crown } from "lucide-react";
 
 /* ============================================================
    CONTENT
