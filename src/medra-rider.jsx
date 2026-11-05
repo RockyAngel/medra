@@ -102,6 +102,8 @@ function vehicleFits(vehicleKey, sizeKey) {
   return (idx < 0 ? 0 : idx) <= vehicleByKey(vehicleKey).maxSize;
 }
 const orderSizeByKey = (k) => ORDER_SIZES.find((s) => s.key === k) || null;
+const WAIT_FEE = 200;
+const WAIT_FEE_AFTER_MS = 10 * 60 * 1000;
 const deliveryPin = (id) => String(id).replace(/\D/g, "").slice(-4).padStart(4, "0");
 function SizeBadge({ sizeKey, weightKg }) {
   const sz = orderSizeByKey(sizeKey);
@@ -478,12 +480,14 @@ function SharedDeliveriesSection({ vehicleType, sharedOrderStore, setTodayEarnin
     });
   }, [sharedOrderStore?.orders]);
 
+  // All hooks sit above the early return so their order never changes between renders.
+  const [deliveryPhotos, setDeliveryPhotos] = useState({});
+  const [pins, setPins] = useState({});
+  const [previewOrder, setPreviewOrder] = useState(null);
   if (!sharedOrderStore) {
     return <div className="section-pad"><div className="panel enter"><div className="muted small">This queue only works inside the combined preview -- open combined.html to see real orders arrive here once a seller has confirmed them.</div></div></div>;
   }
   const available = sharedOrderStore.orders.filter((o) => o.stage === "seller_preparing" && o.oversizeChoice !== "self_pickup" && vehicleFits(vehicleType, o.sizeClass));
-  const [deliveryPhotos, setDeliveryPhotos] = useState({});
-  const [pins, setPins] = useState({});
   const myActive = sharedOrderStore.orders.filter((o) => o.assignedRider === RIDER.name && ["rider_assigned", "picked_up", "on_the_way", "delivered_awaiting_customer_confirm"].includes(o.stage));
 
   const accept = (o) => sharedOrderStore.updateOrder(o.id, { stage: "rider_assigned", assignedRider: RIDER.name, riderInfo: { nickname: RIDER.name.split(" ")[0] + " " + RIDER.name.split(" ")[1][0] + ".", phone: RIDER.phone }, riderAssignedAt: Date.now() });
@@ -497,7 +501,6 @@ function SharedDeliveriesSection({ vehicleType, sharedOrderStore, setTodayEarnin
       stage: cur.customerConfirmedDelivered ? "delivered" : "delivered_awaiting_customer_confirm",
     }));
   };
-  const [previewOrder, setPreviewOrder] = useState(null);
 
   return (
     <div className="section-pad">
@@ -648,7 +651,7 @@ function BusyZonesScreen({ newOrders, favoriteZones, onToggleFavorite, vehicleTy
   );
 }
 
-function DashboardScreen({ onFailedDelivery, verificationHold = null, hiddenOrders = 0, vehicleType, online, setOnline, newOrders, onAccept, onReject, onBatch, activeTrip, stageIdx, onAdvance, onHandoff, kpis, onNavigate, declineLog, todayEarnings, todayOrders, favoriteZones }) {
+function DashboardScreen({ onWaitingFee, onFailedDelivery, verificationHold = null, hiddenOrders = 0, vehicleType, online, setOnline, newOrders, onAccept, onReject, onBatch, activeTrip, stageIdx, onAdvance, onHandoff, kpis, onNavigate, declineLog, todayEarnings, todayOrders, favoriteZones }) {
   const [decliningOrderId, setDecliningOrderId] = useState(null);
   const [declineReason, setDeclineReason] = useState("");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
@@ -671,6 +674,16 @@ function DashboardScreen({ onFailedDelivery, verificationHold = null, hiddenOrde
   const [deliveryPhoto, setDeliveryPhoto] = useState(null);
   const [pinEntry, setPinEntry] = useState("");
   const [waitedSince, setWaitedSince] = useState(null);
+  const [waitFeePaid, setWaitFeePaid] = useState(false);
+  const [waitNow, setWaitNow] = useState(Date.now());
+  useEffect(() => {
+    if (!waitedSince) return undefined;
+    const t = setInterval(() => setWaitNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [waitedSince]);
+  useEffect(() => {
+    if (waitedSince && !waitFeePaid && waitNow - waitedSince >= WAIT_FEE_AFTER_MS) { setWaitFeePaid(true); onWaitingFee && onWaitingFee(WAIT_FEE); }
+  }, [waitNow, waitedSince, waitFeePaid]);
   const photoRef = useRef(null);
   const handleDeliveryPhoto = (e) => {
     const file = e.target.files?.[0];
@@ -679,7 +692,7 @@ function DashboardScreen({ onFailedDelivery, verificationHold = null, hiddenOrde
     reader.onload = () => setDeliveryPhoto(reader.result);
     reader.readAsDataURL(file);
   };
-  useEffect(() => { setDeliveryPhoto(null); setPinEntry(""); setWaitedSince(null); }, [activeTrip?.id]);
+  useEffect(() => { setDeliveryPhoto(null); setPinEntry(""); setWaitedSince(null); setWaitFeePaid(false); }, [activeTrip?.id]);
   if (activeTrip) {
     const stage = STAGES[stageIdx];
     const nextLabel = ["Confirm arrival at pickup", "Confirm items picked up", "Start heading to drop-off", "Confirm arrival at drop-off", "Complete delivery"][stageIdx];
@@ -725,7 +738,7 @@ function DashboardScreen({ onFailedDelivery, verificationHold = null, hiddenOrde
                 <button className="ghost-btn-sm" onClick={() => setWaitedSince(Date.now())}>Customer not answering</button>
               ) : (
                 <div className="muted small" style={{ background: "#FEF3C7", color: "#92400E", padding: "8px 12px", borderRadius: 10 }}>
-                  Waiting started. Call and message the customer. After 10 minutes a waiting fee of ₦200 is added for you; if the customer still cannot be reached, return the order to the seller and you are paid half the delivery fee.
+                  Waiting started. Call and message the customer. {waitFeePaid ? `Waiting fee of ${money(WAIT_FEE)} added to your earnings.` : `After 10 minutes a waiting fee of ${money(WAIT_FEE)} is added for you (${Math.max(0, Math.ceil((WAIT_FEE_AFTER_MS - (waitNow - waitedSince)) / 60000))} min to go).`} If the customer still cannot be reached, return the order to the seller and you are paid half the delivery fee.
                   <div style={{ marginTop: 8 }}><button className="ghost-btn-sm deny" onClick={() => confirmAction({ title: "Return this order to the seller?", message: "Only do this after you have tried to reach the customer. The order is marked as a failed delivery.", confirmLabel: "Return to seller" }, () => onFailedDelivery && onFailedDelivery())}>Return to seller (failed delivery)</button></div>
                 </div>
               )}
@@ -873,7 +886,7 @@ function DashboardScreen({ onFailedDelivery, verificationHold = null, hiddenOrde
                     </div>
                   );
                 })}
-                {hiddenOrders > 0 && <div className="muted small" style={{ marginTop: 8 }}>{hiddenOrders} order{hiddenOrders > 1 ? "s are" : " is"} hidden because your {vehicleByKey(vehicleType).label.toLowerCase()} cannot carry {hiddenOrders > 1 ? "them" : "it"}. Change your vehicle in Settings if it has changed.</div>}
+                {hiddenOrders > 0 && <div className="muted small" style={{ marginTop: 8 }}>{hiddenOrders} order{hiddenOrders > 1 ? "s are" : " is"} hidden because your {vehicleByKey(vehicleType).label.toLowerCase()} cannot carry or enter {hiddenOrders > 1 ? "them" : "it"}, or cash orders are paused. Change your vehicle in Settings if it has changed.</div>}
                 {newOrders.length === 0 && <EmptyStateNote>No new orders right now -- stay online to keep receiving them.</EmptyStateNote>}
               </div>
               {decliningOrderId && (
@@ -2478,7 +2491,11 @@ export default function MedraRiderApp({ sharedAuthed, onAuth, onLogout, sharedOr
   // Only offers this vehicle can carry are shown; the rest are hidden, not rejected.
   // New cash-on-delivery orders are hidden once the rider holds the cash limit.
   const cashBlocked = cashInHand >= CASH_LIMIT;
-  const visibleOrders = newOrders.filter((o) => vehicleFits(vehicleType, o.sizeKey) && !(cashBlocked && o.cod));
+  // Areas Super Admin has closed to motorbikes and bicycles (Delivery Settings).
+  const restrictedZones = (typeof window !== "undefined" && window.__medraConfig?.Lagos?.restricted) || [];
+  const twoWheeler = vehicleType === "bike" || vehicleType === "bicycle";
+  const inRestrictedZone = (o) => twoWheeler && restrictedZones.some((z) => z && String(o.area || "").toLowerCase().includes(z.toLowerCase()));
+  const visibleOrders = newOrders.filter((o) => vehicleFits(vehicleType, o.sizeKey) && !(cashBlocked && o.cod) && !inRestrictedZone(o));
   const hiddenOrders = newOrders.length - visibleOrders.length;
   // In the combined preview, a rider who just signed up cannot go online until Super Admin has verified every check.
   const myChecks = (sharedOrderStore?.verifications || []).filter((v) => v.role === "Rider");
@@ -2540,6 +2557,11 @@ export default function MedraRiderApp({ sharedAuthed, onAuth, onLogout, sharedOr
       setStageIdx(0);
     } else setStageIdx((i) => i + 1);
   };
+  const onWaitingFee = (amount) => {
+    setTodayEarnings((e) => e + amount);
+    setUnreachableNote(`Waiting fee of ${money(amount)} added to your earnings.`);
+    setTimeout(() => setUnreachableNote(null), 4200);
+  };
   const onFailedDelivery = () => {
     setTodayEarnings((e) => e + Math.round(riderPayout(activeTrip.deliveryFee) * 0.5));
     setUnreachableNote(`${activeTrip.id} is going back to the seller. You are paid half the delivery fee for the trip.`);
@@ -2557,7 +2579,7 @@ export default function MedraRiderApp({ sharedAuthed, onAuth, onLogout, sharedOr
   const activeLabel = NAV_ITEMS.find((i) => i.key === active)?.label || "Dashboard";
 
   const SCREENS = {
-    dashboard: appLoading ? <DashboardSkeleton /> : <DashboardScreen online={online} setOnline={setOnline} newOrders={visibleOrders} verificationHold={verificationHold} onFailedDelivery={onFailedDelivery} hiddenOrders={hiddenOrders} vehicleType={vehicleType} onAccept={onAccept} onReject={onReject} onBatch={onBatch} activeTrip={activeTrip} stageIdx={stageIdx} onAdvance={onAdvance} onHandoff={onHandoff} kpis={dynamicKpis} onNavigate={setActive} declineLog={declineLog} todayEarnings={todayEarnings} todayOrders={todayOrders} favoriteZones={favoriteZones} />,
+    dashboard: appLoading ? <DashboardSkeleton /> : <DashboardScreen online={online} setOnline={setOnline} newOrders={visibleOrders} verificationHold={verificationHold} onFailedDelivery={onFailedDelivery} onWaitingFee={onWaitingFee} hiddenOrders={hiddenOrders} vehicleType={vehicleType} onAccept={onAccept} onReject={onReject} onBatch={onBatch} activeTrip={activeTrip} stageIdx={stageIdx} onAdvance={onAdvance} onHandoff={onHandoff} kpis={dynamicKpis} onNavigate={setActive} declineLog={declineLog} todayEarnings={todayEarnings} todayOrders={todayOrders} favoriteZones={favoriteZones} />,
     "new-orders": <DashboardScreen online={online} setOnline={setOnline} newOrders={visibleOrders} verificationHold={verificationHold} onFailedDelivery={onFailedDelivery} hiddenOrders={hiddenOrders} vehicleType={vehicleType} onAccept={onAccept} onReject={onReject} onBatch={onBatch} activeTrip={activeTrip} stageIdx={stageIdx} onAdvance={onAdvance} onHandoff={onHandoff} kpis={dynamicKpis} onNavigate={setActive} declineLog={declineLog} todayEarnings={todayEarnings} todayOrders={todayOrders} favoriteZones={favoriteZones} />,
     "busy-zones": <BusyZonesScreen newOrders={visibleOrders} favoriteZones={favoriteZones} onToggleFavorite={toggleFavoriteZone} vehicleType={vehicleType} />,
     "shared-deliveries": <SharedDeliveriesSection vehicleType={vehicleType} sharedOrderStore={sharedOrderStore} setTodayEarnings={setTodayEarnings} setTodayOrders={setTodayOrders} />,

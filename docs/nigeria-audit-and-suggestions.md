@@ -338,6 +338,8 @@ Each is tagged **Add**, **Change**, **Substitute**, **Merge**, **Remove** or **F
 
 ## Part 4 -- Status of all 190 suggestions (updated 3 Nov 2026)
 
+**Round 4 (5 Nov) -- enforcement:** Super Admin's city settings are now obeyed by the other apps in the combined preview (rain surcharge, minimum fee, city phase, daily cap, motorbike-restricted areas); estate cut-offs block checkout; the waiting fee is charged once after 10 minutes; seller payouts stay on hold until documents are approved; flagged approvals need two different people; delivery codes are checked on live orders too. In the standalone apps, which have no Super Admin in the page, the built-in defaults apply.
+
 **Round 3 additions (3 Nov):** Verification Queue now ranks by risk, shows waiting time and licence expiry, and needs two Super Admins for flagged items; new Super Admin screens for Launch & Rollout (go/no-go, city phases, pilot cap), Daily Reconciliation and a Weekly Digest with refund report and CSV export; rider cash-in-hand limit, take-home summary and customer-unreachable flow; seller money overview, statement download and fee preview; customer addresses with area, landmark, gate photo and handover choice; Health Guides (mental health, mum and baby, common conditions, Pidgin); data and privacy panel; trip sharing.
 
 **Identity and document checks:** anything that must be double-checked now goes to the Super Admin **Verification Queue** (NIN, BVN, driver's licence, vehicle papers, guarantor, CAC, TIN, NAFDAC, MDCN, PCN, payout account names, suspicious transfer proofs). Admin and Support can see status only.
@@ -359,13 +361,13 @@ Also added: Regulatory Register (Super Admin > System), per-city delivery settin
 | 11 | Fix thousands separators and currency formatting to one shared helper. | Not done yet -- buildable, queued for a later round |
 | 12 | Change the rider fuel cost to an editable Super Admin setting by city. | Partly done -- Fuel cost per km is editable per city (display only until a backend exists) |
 | 13 | Change peak windows to Lagos rush hours (about 6-10am and 4-8pm) and let Super Admin edit them per city. | Partly done -- Windows are editable per city in Super Admin (display only until a backend exists) |
-| 14 | Add a rain/flood surcharge that Super Admin can switch on for a city. | Partly done -- Switch and multiplier exist per city; customers do not see the banner yet |
+| 14 | Add a rain/flood surcharge that Super Admin can switch on for a city. | Done -- Super Admin's rain switch raises the customer's delivery fee and shows a bad-weather note at checkout |
 | 15 | Add vehicle types: bicycle, motorbike, tricycle (keke), car, van, truck. | Done |
 | 16 | Add a size-to-vehicle rule: Large needs car/van/keke, Oversized needs van/truck; bikes never see them. | Done |
-| 17 | Add a "restricted zones" list per city where motorbikes are not allowed, with routing to car riders only (needs your ... | Partly done -- Zone list is editable per city; routing orders away from motorbikes needs the real order flow |
+| 17 | Add a "restricted zones" list per city where motorbikes are not allowed, with routing to car riders only (needs your ... | Partly done -- restricted areas now hide offers from motorbike and bicycle riders; live shared orders do not carry an area yet |
 | 18 | Add landmark-based addresses: "near ... bus stop", "opposite ...", with a dropped pin. | Done |
 | 19 | Add an area/LGA dropdown (Lekki Phase 1, Ikeja GRA, Wuse 2, etc.) instead of free text only. | Done |
-| 20 | Add a delivery PIN or order code the customer reads to the rider to prove handover. | Partly done -- Customer sees the code and the rider must enter it in the practice flow; the live shared flow does not check it yet |
+| 20 | Add a delivery PIN or order code the customer reads to the rider to prove handover. | Done -- the rider must enter the customer's code on practice and live shared orders |
 | 21 | Add "call customer" and "WhatsApp customer" buttons for riders, with number masking. | Partly done -- Call and WhatsApp buttons added; real number masking needs a calling service |
 | 22 | Add multi-stop and batch deliveries so one rider can carry nearby orders. | Not done yet -- buildable, queued for a later round |
 | 23 | Add scheduled and bulk deliveries for businesses. | Not done yet -- buildable, queued for a later round |
@@ -373,7 +375,7 @@ Also added: Regulatory Register (Super Admin > System), per-city delivery settin
 | 25 | Add a rider "power bank / data" pre-shift check. | Done |
 | 26 | Add a rider rest/ safety rule after long shifts. | Not done yet -- buildable, queued for a later round |
 | 27 | Change ETAs to ranges ("35-50 min") with an "area is busy" note. | Done |
-| 28 | Add a "wrong address" and "customer unreachable" flow with a waiting-time fee. | Partly done -- Waiting-time steps and return-to-seller added; the ₦200 waiting fee is described but not charged yet |
+| 28 | Add a "wrong address" and "customer unreachable" flow with a waiting-time fee. | Done -- after 10 minutes of waiting a ₦200 waiting fee is added once, and the rider can return the order |
 | 29 | Add failed-delivery and return-to-seller fees. | Partly done -- Rider is paid half the delivery fee on a failed delivery; the seller-side return fee is not built |
 | 30 | Add a delivery-fee calculator per city that Super Admin controls (base, per km, minimum, surge). | Done |
 | 31 | Change the fee floor so very short trips still cover the rider's fuel. | Done |
@@ -498,16 +500,16 @@ Also added: Regulatory Register (Super Admin > System), per-city delivery settin
 | 150 | Fix the prototype-versus-real wording: label every simulated feature (tracking, video, GPS, push) with a small "Previ... | Not done yet -- buildable, queued for a later round |
 | 151 | Add a "re-verify every 12 months" rule for licences, MDCN and PCN, with a reminder to Super Admin 30 days before expir... | Done |
 | 152 | Add a risk score on each applicant in the Verification Queue (mismatched names, reused numbers, brand-new SIM) so the ... | Done |
-| 153 | Add a two-person rule: payouts above a set amount, and approving a rider with a flagged check, need a second Super Adm... | Done |
+| 153 | Add a two-person rule: payouts above a set amount, and approving a rider with a flagged check, need a second Super Adm... | Done -- flagged items need two different Super Admins; the same person cannot approve twice |
 | 154 | Add a "why was I rejected, how do I fix it" screen for applicants, with a one-tap resubmit. | Partly done -- Rejection reason is shown to the rider; a guided resubmit screen is not built |
 | 155 | Add a service-level timer on the queue (check within 24 hours) and an alert when items are overdue. | Done |
 | 156 | Add photo selfie matching on the NIN photo for riders, through an identity provider. | Needs an outside partner or real data |
 | 157 | Add a verified-rider badge on the customer tracking screen (name, photo, plate) so customers know who is coming. | Not done yet -- buildable, queued for a later round |
-| 158 | Add a seller trust level (new, verified, trusted) that controls payout speed and listing limits. | Partly done -- Trust level and payout speed are explained to sellers; not enforced yet |
+| 158 | Add a seller trust level (new, verified, trusted) that controls payout speed and listing limits. | Partly done -- payouts stay on hold until documents are approved (enforced); the number of waiting days is shown but not timed |
 | 159 | Add a rider "area knowledge" rating so the best riders for an area get its orders first. | Not done yet -- buildable, queued for a later round |
 | 160 | Add a landmark-photo field: the customer uploads a photo of their gate or building. | Done |
 | 161 | Add a "meet at the gate" option for estates with security, with the gate code shared only after pickup. | Done |
-| 162 | Add an estate/area delivery rule list (some estates allow deliveries only until a set hour). | Partly done -- Estate cut-off time is saved on the address; the rider app does not enforce it yet |
+| 162 | Add an estate/area delivery rule list (some estates allow deliveries only until a set hour). | Done -- checkout blocks delivery times after an address's cut-off |
 | 163 | Add rider heat-maps by hour so riders know when and where to position themselves. | Not done yet -- buildable, queued for a later round |
 | 164 | Add a customer "leave with gateman" choice with a photo as proof. | Done |
 | 165 | Add a rider weekly earnings goal with a progress bar. | Done -- Already existed (weekly and monthly goals) |
@@ -532,8 +534,8 @@ Also added: Regulatory Register (Super Admin > System), per-city delivery settin
 | 184 | Add a clear "who can see my health data" screen with one-tap revoke. | Done |
 | 185 | Add a health-emergency shortcut on the home screen for users who have already used the symptom checker. | Not done yet -- buildable, queued for a later round |
 | 186 | Add a launch checklist screen in Super Admin that ties the Regulatory Register to go/no-go for each city. | Done |
-| 187 | Add a city rollout switch: open sellers first, then riders, then customers. | Done |
-| 188 | Add a pilot-mode cap (for example 50 orders a day per city) so launch problems stay small. | Done |
+| 187 | Add a city rollout switch: open sellers first, then riders, then customers. | Done -- a city that is not set to Customers open blocks customer checkout |
+| 188 | Add a pilot-mode cap (for example 50 orders a day per city) so launch problems stay small. | Done -- when the daily cap is on, checkout stops once the cap is reached |
 | 189 | Add a feedback button on every screen that attaches the screen name and sends it to Super Admin. | Not done yet -- buildable, queued for a later round |
 | 190 | Add a weekly "what went wrong" digest for Super Admin: late orders, rejected checks, refunds, rider no-shows. | Done |
 

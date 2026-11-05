@@ -35,6 +35,7 @@ npm test        # smoke-renders all 8 apps
 - In the combined preview, a new rider or seller sign-up appears live in the Super Admin Verification Queue; a new rider cannot go online until every check is approved
 - Super Admin also has Launch & Rollout (go/no-go, city phases, pilot cap), Daily Reconciliation and a Weekly Digest; flagged verification items need two approvers
 - Rider: cash-in-hand limit hides new cash orders until paid in; customer-unreachable flow; take-home summary
+- In the combined preview Super Admin's city settings are enforced elsewhere: rain surcharge and minimum fee change the customer's delivery fee, a city not set to Customers open blocks checkout, the daily cap stops orders, restricted areas hide offers from motorbikes. Estate cut-off times block checkout. Seller payouts stay on hold until documents are approved. Flagged verification items need two different Super Admins. Waiting fee (₦200) is paid once after 10 minutes
 - Delivery code: the customer reads a 4-digit code to the rider to complete a delivery (practice and live shared orders)
 - **Order statuses** are one set everywhere: Placed, Preparing, Out for Delivery, Delivered, Cancelled.
 - **Reverse auction:** a losing bid under 150 points forfeits the whole bid; a losing bid of 150 or more pays a 2% entry fee.

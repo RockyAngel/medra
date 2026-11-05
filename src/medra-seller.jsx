@@ -1397,7 +1397,7 @@ function SellerWithdrawModal({ available, onClose, onSubmit }) {
   );
 }
 
-function PayoutsScreen({ extraPayouts, requestPayout, available = 125600, telehealthSpend = 0 }) {
+function PayoutsScreen({ payoutHold = null, extraPayouts, requestPayout, available = 125600, telehealthSpend = 0 }) {
   const [requestOpen, setRequestOpen] = useState(false);
   const [expanded, setExpanded] = useState(null);
   const allPayouts = [...extraPayouts, ...PAYOUTS];
@@ -1418,11 +1418,12 @@ function PayoutsScreen({ extraPayouts, requestPayout, available = 125600, telehe
           <div><div className="muted small">Waiting for review</div><div className="card-name" style={{ fontSize: 20 }}>{money(waiting)}</div></div>
           <div><div className="muted small">Already paid out</div><div className="card-name" style={{ fontSize: 20 }}>{money(released)}</div></div>
         </div>
-        <div className="muted small" style={{ marginTop: 10 }}>Trust level: <b>Verified</b>. New sellers wait about 3 days for payouts, verified sellers 1-2 business days, and trusted sellers (6 months, few refunds) get next-day payouts.</div>
+        <div className="muted small" style={{ marginTop: 10 }}>Trust level: <b>{payoutHold ? "New" : "Verified"}</b>. {payoutHold ? "New sellers wait about 3 business days for each payout once approved." : "Verified sellers wait 1-2 business days for each payout."} Trusted sellers (6 months, few refunds) get next-day payouts.</div>
       </div>
+      {payoutHold && <div className="muted small" role="alert" style={{ background: "#FEF3C7", color: "#92400E", padding: "8px 12px", borderRadius: 10, fontWeight: 600 }}>{payoutHold}</div>}
       {requestOpen && <SellerWithdrawModal available={available} onClose={() => setRequestOpen(false)} onSubmit={requestPayout} />}
       <div className="panel enter">
-        <div className="panel-title-row"><div className="panel-title">Payouts</div><button className="primary-btn-sm" onClick={() => setRequestOpen(true)}>Request Payout</button></div>
+        <div className="panel-title-row"><div className="panel-title">Payouts</div><button className="primary-btn-sm" disabled={!!payoutHold} onClick={() => setRequestOpen(true)}>Request Payout</button></div>
         <div className="muted small" style={{ marginBottom: 10 }}>Requests are reviewed and sent by Medra's finance team -- usually within 1-2 business days.</div>
         {telehealthSpend > 0 && <div className="muted small" style={{ marginBottom: 10 }}>{money(telehealthSpend)} of your balance has already gone to telehealth charges -- your available balance below is net of that.</div>}
         <div className="list-col">
@@ -2753,7 +2754,13 @@ export default function MedraSellerApp({ sharedAuthed, onAuth, onLogout, sharedO
   // actual available balance server-side, and the payout itself (bank
   // transfer) must be a real, audited backend action -- never something the
   // frontend can mark as "paid" on its own.
+  // Seller documents are checked by Super Admin. Until every one is approved, payouts stay on hold.
+  const myChecks = (sharedOrderStore?.verifications || []).filter((v) => v.role === "Seller");
+  const payoutHold = myChecks.length === 0 ? null
+    : myChecks.some((v) => v.status === "rejected") ? `Admin rejected your ${myChecks.find((v) => v.status === "rejected").check}. Payouts stay on hold until you fix it.`
+    : myChecks.some((v) => v.status !== "verified") ? `Waiting for Admin to verify your documents (${myChecks.filter((v) => v.status === "verified").length} of ${myChecks.length} checked). Payouts stay on hold until all are approved.` : null;
   const requestPayout = (amount) => {
+    if (payoutHold) return;
     setExtraPayouts((p) => [{ date: "Just now", amount, status: "pending", orders: [], requestedAt: Date.now() }, ...p]);
   };
   const [showLanding, setShowLanding] = useState(true);
@@ -2852,7 +2859,7 @@ export default function MedraSellerApp({ sharedAuthed, onAuth, onLogout, sharedO
     "order-confirmations": <OrderConfirmationsSection sharedOrderStore={sharedOrderStore} />,
     "rider-declines": <RiderDeclinesSection />,
     earnings: <EarningsScreen />,
-    payouts: <PayoutsScreen extraPayouts={extraPayouts} requestPayout={requestPayout} available={sellerAvailableBalance} telehealthSpend={telehealthSpend} />,
+    payouts: <PayoutsScreen payoutHold={payoutHold} extraPayouts={extraPayouts} requestPayout={requestPayout} available={sellerAvailableBalance} telehealthSpend={telehealthSpend} />,
     telehealth: <SellerTelehealthScreen available={sellerAvailableBalance} telehealthSpend={telehealthSpend} onPay={(fee) => setTelehealthSpend((s) => s + fee)} />,
     customers: <CustomersScreen />,
     reviews: <ReviewsScreen />,

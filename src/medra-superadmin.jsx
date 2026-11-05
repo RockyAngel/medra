@@ -1164,9 +1164,23 @@ function KycVerificationsSection({ sharedOrderStore }) {
   const note = (text) => setLog((l) => [{ text, at: "just now" }, ...l].slice(0, 8));
   const decide = (it, status, why) => { patch(it, why ? { status, rejectReason: why } : { status }); note(`${VERIFICATION_LABEL[status]} -- ${it.applicant} (${it.check})${why ? `: ${why}` : ""}`); };
   // Two-person rule: a flagged item needs a second Super Admin to approve it.
+  const APPROVERS = ["Amaka O.", "Tunde B.", "Ife K."];
+  const [approving, setApproving] = useState(null);
+  const [approver, setApprover] = useState(APPROVERS[0]);
+  const [approveError, setApproveError] = useState("");
   const approve = (it) => {
-    if (it.note && it.status !== "second_review") { patch(it, { status: "second_review" }); note(`First approval -- ${it.applicant} (${it.check}). Waiting for a second Super Admin.`); return; }
+    if (it.note || it.status === "second_review") { setApproveError(""); setApprover(it.firstApprover && APPROVERS[0] === it.firstApprover ? APPROVERS[1] : APPROVERS[0]); setApproving(it); return; }
     decide(it, "verified");
+  };
+  const confirmApprove = () => {
+    const it = approving;
+    if (it.status === "second_review") {
+      if (approver === it.firstApprover) { setApproveError(`${approver} already gave the first approval. A different Super Admin must give the second.`); return; }
+      patch(it, { status: "verified", secondApprover: approver }); note(`Verified -- ${it.applicant} (${it.check}). Approved by ${it.firstApprover} and ${approver}.`);
+    } else {
+      patch(it, { status: "second_review", firstApprover: approver }); note(`First approval by ${approver} -- ${it.applicant} (${it.check}). Waiting for a different Super Admin.`);
+    }
+    setApproving(null);
   };
   const rank = (x) => (isOpen(x) ? 0 : 1) * 10 - verifRisk(x).n;
   const shown = items.filter((x) => (checkFilter === "all" || x.check === checkFilter) && (statusFilter === "all" ? true : statusFilter === "open" ? isOpen(x) : x.status === statusFilter) && (!query || (x.applicant + x.detail).toLowerCase().includes(query.toLowerCase()))).sort((a, b) => rank(a) - rank(b));
@@ -1204,7 +1218,7 @@ function KycVerificationsSection({ sharedOrderStore }) {
                   <td style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     {isOpen(a) ? (
                       <>
-                        <button className="ghost-btn-sm" onClick={() => a.status === "second_review" ? confirmAction({ title: "Approve as second reviewer?", message: "This must be a different Super Admin from the first approver.", confirmLabel: "Approve" }, () => approve(a)) : approve(a)}>{a.status === "second_review" ? "Approve (2nd)" : a.note ? "Approve (1st)" : "Approve"}</button>
+                        <button className="ghost-btn-sm" onClick={() => approve(a)}>{a.status === "second_review" ? "Approve (2nd)" : a.note ? "Approve (1st)" : "Approve"}</button>
                         <button className="ghost-btn-sm" onClick={() => confirmAction({ title: "Ask for more information?", message: `${a.applicant} will be asked to resubmit or explain: ${a.check}.`, confirmLabel: "Ask" }, () => decide(a, "info_requested"))}>Ask for info</button>
                         <button className="ghost-btn-sm deny" onClick={() => { setReason("Document unclear"); setRejecting(a); }}>Reject</button>
                       </>
@@ -1225,6 +1239,21 @@ function KycVerificationsSection({ sharedOrderStore }) {
         <div className="panel enter">
           <div className="panel-title" style={{ fontSize: 13 }}>Your decisions this session</div>
           <div className="list-col">{log.map((l, i) => <div key={i} className="muted small">{l.text} -- {l.at}</div>)}</div>
+        </div>
+      )}
+      {approving && (
+        <div className="modal-backdrop" onClick={() => setApproving(null)}>
+          <div className="confirm-modal enter" onClick={(e) => e.stopPropagation()}>
+            <div className="card-name" style={{ fontSize: 16, marginBottom: 6 }}>{approving.status === "second_review" ? "Second approval" : "First approval"}: {approving.check} for {approving.applicant}</div>
+            <div className="muted small" style={{ marginBottom: 10 }}>{approving.note ? `Flagged: ${approving.note}. ` : ""}{approving.status === "second_review" ? `First approved by ${approving.firstApprover}. A different Super Admin must approve now.` : "Flagged items need two different Super Admins."}</div>
+            <div className="field" style={{ marginBottom: 10 }}><span>Who is approving?</span>
+              <select className="sort-select" value={approver} onChange={(e) => { setApprover(e.target.value); setApproveError(""); }}>{APPROVERS.map((n) => <option key={n}>{n}</option>)}</select></div>
+            {approveError && <div className="muted small" role="alert" style={{ color: "#DC2626", marginBottom: 10 }}>{approveError}</div>}
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button className="ghost-btn-sm" onClick={() => setApproving(null)}>Cancel</button>
+              <button className="primary-btn-sm" onClick={confirmApprove}>Approve</button>
+            </div>
+          </div>
         </div>
       )}
       {rejecting && (
@@ -3247,19 +3276,33 @@ function AppSettingsSection() {
   );
 }
 
+// Rules Super Admin sets are published on window so the apps in the same page (combined preview) obey them.
+function publishCityConfig(patch) {
+  if (typeof window === "undefined") return;
+  const all = window.__medraConfig || {};
+  Object.keys(patch).forEach((city) => { all[city] = { ...(all[city] || {}), ...patch[city] }; });
+  window.__medraConfig = all;
+}
+// Keep what Super Admin already set when a screen is opened again.
+const overlayConfig = (defaults, keys) => Object.fromEntries(Object.entries(defaults).map(([city, v]) => {
+  const live = (typeof window !== "undefined" && window.__medraConfig && window.__medraConfig[city]) || {};
+  const out = { ...v }; keys.forEach((k) => { if (live[k] !== undefined) out[k] = live[k]; });
+  return [city, out];
+}));
 const CITY_DELIVERY_DEFAULTS = {
-  Lagos: { radius: 13, surcharge: 1.3, minFee: 600, baseFee: 500, perKm: 120, fuelPerKm: 55, peak: "6-10am, 12-2pm, 4-9pm", rain: false, rainMult: 1.25, restricted: ["Ikoyi (bike limits -- confirm with the state)", "Victoria Island main roads (bike limits -- confirm with the state)"] },
+  Lagos: { radius: 13, surcharge: 1.3, minFee: 600, baseFee: 500, perKm: 120, fuelPerKm: 55, peak: "6-10am, 12-2pm, 4-9pm", rain: false, rainMult: 1.25, restricted: [] },
   Abuja: { radius: 15, surcharge: 1.25, minFee: 700, baseFee: 600, perKm: 130, fuelPerKm: 55, peak: "7-10am, 12-2pm, 4-8pm", rain: false, rainMult: 1.2, restricted: [] },
   Kano: { radius: 12, surcharge: 1.2, minFee: 500, baseFee: 400, perKm: 100, fuelPerKm: 55, peak: "7-10am, 12-2pm, 4-8pm", rain: false, rainMult: 1.2, restricted: [] },
   "Port Harcourt": { radius: 12, surcharge: 1.3, minFee: 600, baseFee: 500, perKm: 120, fuelPerKm: 55, peak: "7-10am, 4-8pm", rain: false, rainMult: 1.3, restricted: [] },
 };
 function DeliverySettingsSection() {
   const [city, setCity] = useState("Lagos");
-  const [cfg, setCfg] = useState(CITY_DELIVERY_DEFAULTS);
+  const [cfg, setCfg] = useState(() => overlayConfig(CITY_DELIVERY_DEFAULTS, ["minFee", "rain", "rainMult", "restricted"]));
   const [newZone, setNewZone] = useState("");
   const [saved, setSaved] = useState(false);
   const c = cfg[city];
   const set = (patch) => setCfg((all) => ({ ...all, [city]: { ...all[city], ...patch } }));
+  useEffect(() => { publishCityConfig(Object.fromEntries(Object.entries(cfg).map(([k, v]) => [k, { minFee: v.minFee, rain: v.rain, rainMult: v.rainMult, restricted: v.restricted }]))); }, [cfg]);
   const num = (v) => Number(v) || 0;
   const save = () => { setSaved(true); setTimeout(() => setSaved(false), 2000); };
   // Worked example so Super Admin sees what the numbers mean for a 5 km trip.
@@ -3397,9 +3440,10 @@ const CITY_ROLLOUT_SEED = {
 };
 const ROLLOUT_PHASES = ["Not open", "Sellers only", "Riders open", "Customers open"];
 function LaunchSection() {
-  const [cities, setCities] = useState(CITY_ROLLOUT_SEED);
+  const [cities, setCities] = useState(() => overlayConfig(CITY_ROLLOUT_SEED, ["phase", "cap", "capOn"]));
   const [done, setDone] = useState(new Set(["R1"]));
   const set = (c, p) => setCities((all) => ({ ...all, [c]: { ...all[c], ...p } }));
+  useEffect(() => { publishCityConfig(Object.fromEntries(Object.entries(cities).map(([k, v]) => [k, { phase: v.phase, cap: v.cap, capOn: v.capOn }]))); }, [cities]);
   const open = REGULATORY_SEED.filter((r) => !done.has(r.id));
   return (
     <div className="section-pad">

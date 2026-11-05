@@ -183,7 +183,41 @@ function isPeakHour(date = new Date()) {
 }
 // Real distance- and peak-hour-based delivery fee, interpolated within the
 // correct band for the exact distance rather than a flat number or full jump.
+// City rules set by Super Admin (Delivery Settings, Launch & Rollout). Super Admin writes them to
+// window.__medraConfig; this app reads them. When no Super Admin is in the page (standalone customer
+// app) there is no config and the built-in defaults apply.
+const CUSTOMER_CITY = "Lagos";
+const cityConfig = () => (typeof window !== "undefined" && window.__medraConfig && window.__medraConfig[CUSTOMER_CITY]) || null;
+let ORDERS_PLACED_TODAY = 0;
 function computeDeliveryFee(distanceKm, peak) {
+  const base = baseDeliveryFee(distanceKm, peak);
+  const c = cityConfig();
+  if (!c || base === 0) return base;
+  let fee = c.rain ? Math.round(base * c.rainMult) : base;
+  if (c.minFee) fee = Math.max(fee, c.minFee);
+  return fee;
+}
+// Why the customer cannot order right now, or null.
+function orderingBlockReason() {
+  const c = cityConfig();
+  if (!c) return null;
+  if (c.phase && c.phase !== "Customers open") return "Medra is not taking customer orders in your area yet. Please check back soon.";
+  if (c.capOn && c.cap > 0 && ORDERS_PLACED_TODAY >= c.cap) return "We have reached today's order limit in your area. Please try again tomorrow.";
+  return null;
+}
+// Estate cut-off: an address can say deliveries stop at a set time.
+function cutoffBlockReason(addr, schedule, customTime) {
+  if (!addr || !addr.cutoff) return null;
+  const pad = (n) => String(n).padStart(2, "0");
+  let when;
+  if (schedule === "tomorrow") return null;
+  if (schedule === "custom") { if (!customTime) return null; when = customTime.slice(11, 16); }
+  else if (schedule === "evening") when = "18:00";
+  else { const d = new Date(Date.now() + 45 * 60000); when = `${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+  if (schedule === "evening" && addr.cutoff < "20:00") return `${addr.label} only accepts deliveries until ${addr.cutoff}. Pick an earlier time or another address.`;
+  return when > addr.cutoff ? `${addr.label} only accepts deliveries until ${addr.cutoff}. Choose "Tomorrow morning", an earlier time, or another address.` : null;
+}
+function baseDeliveryFee(distanceKm, peak) {
   const interpolate = (d, dMin, dMax, feeMin, feeMax) => {
     const t = Math.max(0, Math.min(1, (d - dMin) / (dMax - dMin)));
     return Math.round(feeMin + t * (feeMax - feeMin));
@@ -2914,7 +2948,9 @@ function CheckoutScreen({ cart, points, wallet, autoConfirm, onAutoConfirmed, on
   const cartProductIds = new Set(items.map((i) => i.productId));
   const recommended = PRODUCTS.filter((p) => cartCategories.has(p.category) && !cartProductIds.has(p.id)).slice(0, 3);
 
-  const openConfirm = () => setConfirmOpen(true);
+  const blockReason = orderingBlockReason() || cutoffBlockReason(selectedAddr, schedule, customTime);
+  const rainOn = !!cityConfig()?.rain;
+  const openConfirm = () => { if (!blockReason) setConfirmOpen(true); };
   const place = () => {
     setConfirmOpen(false);
     setPlacing(true);
@@ -2929,6 +2965,8 @@ function CheckoutScreen({ cart, points, wallet, autoConfirm, onAutoConfirmed, on
       {confirmOpen && <OrderConfirmModal items={items} recommended={recommended} onConfirm={place} onAddRec={(p) => { onAddToCart(p); }} onCancel={() => setConfirmOpen(false)} />}
       <div className="panel enter" style={{ maxWidth: 560 }}>
         <div className="panel-title">Checkout</div>
+        {rainOn && <div className="muted small" style={{ background: "#EFF6FF", color: "#1E40AF", padding: "8px 12px", borderRadius: 10, margin: "8px 0", fontWeight: 600 }}>Bad weather right now, so delivery is a bit higher and may take longer.</div>}
+        {blockReason && <div className="muted small" role="alert" style={{ background: "#FEF2F2", color: "#991B1B", padding: "8px 12px", borderRadius: 10, margin: "8px 0", fontWeight: 600 }}>{blockReason}</div>}
 
         <div className="addr-anchor">
           <button className="flag-row nav-flag" style={{ marginBottom: 12 }} onClick={() => setAddrOpen((o) => !o)}>
@@ -3092,7 +3130,7 @@ function CheckoutScreen({ cart, points, wallet, autoConfirm, onAutoConfirmed, on
             Remember this as my default payment method
           </label>
         </div>
-        <button className={`primary-btn-sm wide ${placing ? "loading" : ""}`} onClick={openConfirm} disabled={placing || isOffline || (payMethod === "transfer" && !transferProofPhoto)}>{placing ? <span className="spinner" /> : isOffline ? "You're offline -- can't place order" : `Place order - ${naira(total)}`}</button>
+        <button className={`primary-btn-sm wide ${placing ? "loading" : ""}`} onClick={openConfirm} disabled={placing || isOffline || !!blockReason || (payMethod === "transfer" && !transferProofPhoto)}>{placing ? <span className="spinner" /> : isOffline ? "You're offline -- can't place order" : `Place order - ${naira(total)}`}</button>
       </div>
     </div>
   );
@@ -6412,7 +6450,7 @@ function AddressesScreen({ onToast }) {
   const saveInstructions = (label) => { setAddresses((list) => list.map((a) => a.label === label ? { ...a, instructions: draftInstructions.trim() } : a)); setEditingLabel(null); onToast?.("Delivery instructions saved"); };
   return (
     <div className="section-pad">
-      {modalOpen && <AddAddressModal onAdd={(a) => { setAddresses((list) => [...list, { ...a, instructions: "" }]); onToast?.("Address added"); }} onClose={() => setModalOpen(false)} />}
+      {modalOpen && <AddAddressModal onAdd={(a) => { ADDRESSES.push({ ...a, instructions: "" }); setAddresses((list) => [...list, { ...a, instructions: "" }]); onToast?.("Address added"); }} onClose={() => setModalOpen(false)} />}
       <div className="panel enter">
         <div className="panel-title-row"><div className="panel-title">Addresses</div><button className="primary-btn-sm" onClick={() => setModalOpen(true)}>+ Add Address</button></div>
         <div className="list-col">
@@ -8572,6 +8610,7 @@ export default function MedraApp({ sharedAuthed, onAuth, onLogout, sharedOrderSt
     setActiveOrderId(id);
   };
   const placeOrder = (total, pointsUsed, instructions, scheduledFor, productPayable, newSubscriptions, payMethod, walletCovered, transferProofPhoto, tipPoints, topUpPoints, recipient, deliveryFee) => {
+    ORDERS_PLACED_TODAY += 1;
     // Remember a used recipient (by name) so it can be picked from a quick
     // list next time, instead of retyping name/phone on every gift order.
     if (recipient?.name) {
